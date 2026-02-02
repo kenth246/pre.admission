@@ -10,14 +10,12 @@ import {
   FileText
 } from "lucide-react";
 
-// Steps matched to your progression
 const steps = [
   { label: "Student Profile", icon: GraduationCap, path: "/profile" },
   { label: "Educational Profile", icon: BookOpen, path: "/education" },  
   { label: "Requirements", icon: ClipboardList, path: "/requirements" }, 
   { label: "Interview", icon: MessageSquare, path: "/interview" },  
-  { label: "BCET", icon: FileText, path: "/exam" },      
-                  
+  { label: "BCET", icon: FileText, path: "/exam" },                   
 ];
 
 const ProgressBar = ({ canProceed = false }) => {
@@ -26,8 +24,8 @@ const ProgressBar = ({ canProceed = false }) => {
 
   const currentStep = steps.findIndex((step) => step.path === location.pathname);
   const activeIndex = currentStep === -1 ? 0 : currentStep;
+  const isLastStep = activeIndex === steps.length - 1;
 
-  // Center-aligned width calculation
   const progressWidth = ((activeIndex + 0.5) / steps.length) * 100;
 
   const handleNext = () => {
@@ -36,13 +34,13 @@ const ProgressBar = ({ canProceed = false }) => {
     }
   };
 
-  // UPDATED handleBack Logic
   const handleBack = () => {
+    // Disable back navigation if on the last step (BCET)
+    if (isLastStep) return;
+
     if (activeIndex === 0) {
-      // Navigates to admission page if on the first step
       navigate("/student_admission");
     } else {
-      // Standard back navigation for other steps
       navigate(steps[activeIndex - 1].path);
     }
   };
@@ -62,7 +60,8 @@ const ProgressBar = ({ canProceed = false }) => {
             const Icon = step.icon;
             const isActive = index <= activeIndex;
             const isCurrent = index === activeIndex;
-            const isLocked = index > activeIndex && !canProceed;
+            // Prevent clicking back via the nodes if on BCET
+            const isLocked = (index > activeIndex && !canProceed) || (isLastStep && index < activeIndex);
 
             return (
               <div 
@@ -93,9 +92,14 @@ const ProgressBar = ({ canProceed = false }) => {
       <div className="flex items-center justify-between bg-white p-2 md:p-4 rounded-2xl shadow-md border border-gray-100">
         <button
           onClick={handleBack}
-          className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors active:scale-90"
+          disabled={isLastStep}
+          className={`p-2 rounded-xl border transition-all active:scale-90 ${
+            isLastStep 
+              ? "bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed opacity-50" 
+              : "border-gray-200 text-gray-700 hover:bg-gray-50"
+          }`}
         >
-          <ChevronLeft className="w-5 h-5 text-gray-700" />
+          <ChevronLeft className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3">
@@ -109,8 +113,12 @@ const ProgressBar = ({ canProceed = false }) => {
 
         <button
           onClick={handleNext}
-          disabled={activeIndex === steps.length - 1 || !canProceed}
-          className="p-2 rounded-xl bg-green-700 disabled:opacity-20 disabled:cursor-not-allowed hover:bg-green-800 transition-all shadow-lg active:scale-90"
+          disabled={isLastStep || !canProceed}
+          className={`p-2 rounded-xl transition-all shadow-lg active:scale-90 ${
+            isLastStep || !canProceed
+              ? "bg-gray-300 cursor-not-allowed opacity-50"
+              : "bg-green-700 hover:bg-green-800"
+          }`}
         >
           <ChevronRight className="w-5 h-5 text-white" />
         </button>

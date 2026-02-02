@@ -124,5 +124,4 @@ const ProgressBar2 = ({ canProceed = false }) => {
     </div>
   );
 };
-
 export default ProgressBar2;
