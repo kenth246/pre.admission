@@ -1,23 +1,45 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; //*
+import api from "../../services/api"; //*
 
-export default function Login() {
+export default function StudentLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [loading, setLoading] = useState(false); //*
 
   const navigate = useNavigate();
   
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      alert("Please enter username and password");
-      return;
-    }
-    alert(`Logging in as ${username}`);
-    navigate("/student_admission");
-  };
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!username.trim() || !password.trim()) {
+    alert("Please enter username and password");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await api.post("/applicant/login", { username, password });
+
+localStorage.setItem("token", response.data.token); // 🔥 REQUIRED
+localStorage.setItem("username", username);
+
+navigate("/student_admission");
+
+// FORCE redirect so auth guard sees token
+window.location.replace("/student_admission");
+
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.data?.msg || "Login failed. Please check your credentials.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleResetSubmit = (e) => {
     e.preventDefault();

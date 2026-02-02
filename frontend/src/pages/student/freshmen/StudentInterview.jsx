@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import StudentHeader from '../../../components/student/StudentHeader.jsx';
 import ProgressBar from '../../../components/student/ProgressBar.jsx';
+import api from '../../../services/api.js';
 
 export default function StudentInterview() {
   const navigate = useNavigate();
@@ -50,10 +51,27 @@ export default function StudentInterview() {
     }
   };
 
-  const handleFinalConfirm = () => {
-    setShowConfirmModal(false);
-    setCanProceed(true);
-    setShowSuccessModal(true);
+  const handleFinalConfirm = async () => {
+const formData = new FormData(formRef.current);
+	const responses = [
+		`First Choice: ${formData.get("firstChoice")}`,
+ 		`Second Choice: ${formData.get("secondChoice")}`,
+		`Q1: ${formData.get("q_1")}`,
+  		`Q2: ${formData.get("q_2")}`,
+    	`Q3: ${formData.get("q_3")}`,
+    	`Q4: ${formData.get("q_4")}`
+	];
+    try {
+      // CONNECT TO BACKEND
+      await api.post('/assessment/interview', { responses });
+      setShowConfirmModal(false);
+      setCanProceed(true);
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.msg || "Failed to submit interview.");
+      setShowConfirmModal(false);
+    }
   };
 
   return (
@@ -87,8 +105,8 @@ export default function StudentInterview() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="flex flex-col">
                   <label className="text-[11px] font-bold text-gray-800 mb-1 uppercase">1st Choice Course <span className="text-red-500">*</span></label>
-                  <select required className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none">
-                    <option value="" disabled selected>Select your first choice</option>
+                  <select required name="firstChoice" defaultValue="" className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none">
+                    <option value="" disabled>Select your first choice</option>
                     {courseOptions.map((course, idx) => (
                       <option key={idx} value={course}>{course}</option>
                     ))}
@@ -96,8 +114,8 @@ export default function StudentInterview() {
                 </div>
                 <div className="flex flex-col">
                   <label className="text-[11px] font-bold text-gray-800 mb-1 uppercase">2nd Choice Course <span className="text-red-500">*</span></label>
-                  <select required className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none">
-                    <option value="" disabled selected>Select your second choice</option>
+                  <select required name="secondChoice" defaultValue="" className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none">
+                    <option value="" disabled>Select your second choice</option>
                     {courseOptions.map((course, idx) => (
                       <option key={idx} value={course}>{course}</option>
                     ))}
@@ -115,7 +133,7 @@ export default function StudentInterview() {
                 <p className="text-m md:text-xl font-black text-gray-800 border-b border-gray-300 pb-2">
                   {index + 1}. {q.text} <span className="text-red-500">*</span>
                 </p>
-                <textarea required placeholder="Type your answer here..." className="w-full bg-transparent uppercase border-none focus:ring-0 outline-none text-gray-900 resize-y text-sm lg:text-lg" rows="2"></textarea>
+                <textarea name={`q_${q.id}`} required placeholder="Type your answer here..." className="w-full bg-transparent uppercase border-none focus:ring-0 outline-none text-gray-900 resize-y text-sm lg:text-lg" rows="2"></textarea>
               </div>
             ))}
 

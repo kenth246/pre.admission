@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
+import api from "../../services/api";
 
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+
 
   // Mock data - in a real app, you would get these from your Auth Context or State
   const userProfile = {
@@ -18,6 +21,28 @@ export default function Header() {
     console.log("Logging out...");
     navigate("/student_login");
   };
+  useEffect(() => {
+  const fetchProfilePhoto = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await api.get("/applicant/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.data?.photo) {
+        setProfilePhoto(`http://localhost:5000${res.data.photo}`);
+      }
+    } catch (err) {
+      console.error("HEADER PHOTO ERROR:", err);
+    }
+  };
+
+  fetchProfilePhoto();
+}, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -62,10 +87,10 @@ export default function Header() {
             <div className="hidden md:block text-right">
             </div>
             <img 
-              src="https://waikikispecialistcentre.com.au/wp-content/uploads/2024/01/generic-photo.jpg"
-              alt="Profile" 
-              className="h-7 w-7 md:h-10 md:w-10 rounded-full border-2 border-white object-cover shadow-sm"
-            />
+  				src={profilePhoto || "https://waikikispecialistcentre.com.au/wp-content/uploads/2024/01/generic-photo.jpg"}
+			    alt="Profile" 
+ 				className="h-7 w-7 md:h-10 md:w-10 rounded-full border-2 border-white object-cover shadow-sm"
+			/>
           </button>
 
           {/* Dropdown Menu */}

@@ -1,10 +1,19 @@
 const mongoose = require('mongoose');
 
 const ApplicantSchema = new mongoose.Schema({
+
+
+    applicantType: { type: String, enum: ["freshman", "transferee"], default: null },
+    isSubmitted: { type: Boolean, default: false },
     // Log-in
-    username: { type: String, unique: true, required: true },
+    username: { type: String, unique: true, required: true, trim: true },
     password: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+
+    photo: {
+        type: String,
+        default: ""
+    },
 
     firstName: { type: String, default: "" },
     lastName: { type: String, default: "" },
@@ -46,6 +55,11 @@ const ApplicantSchema = new mongoose.Schema({
         familyIncome: { type: String, default: "" }
     },
 
+    otherInfo: {
+        type: [String],
+        default: []
+    },
+
     education: {
         lrn: { type: String, default: "" },
         gwa: { type: String, default: "" },
@@ -64,8 +78,10 @@ const ApplicantSchema = new mongoose.Schema({
     },
 
     documents: [{
-        name: String,
-        type: String
+        filename: String,
+        originalName: String,
+        path: String,
+        uploadedAt: Date
     }],
 
     status: {
@@ -78,4 +94,4 @@ const ApplicantSchema = new mongoose.Schema({
 ApplicantSchema.index({ status: 1 });
 ApplicantSchema.index({ createdAt: -1 });
 
-module.exports = mongoose.model('Applicant', ApplicantSchema);
+module.exports = mongoose.models.Applicant || mongoose.model("Applicant", ApplicantSchema);

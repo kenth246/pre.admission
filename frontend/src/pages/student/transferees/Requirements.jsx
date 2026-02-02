@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import StudentHeader from "../../../components/student/StudentHeader";
 import ProgressBar2 from "../../../components/student/ProgressBar2";
+import api from "../../../services/api";
 
 export default function Requirements() {
   const [files, setFiles] = useState({});
@@ -31,9 +32,10 @@ export default function Requirements() {
 
   const handleFileChange = (key, e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile) {
+      if (!selectedFile) return;  
       if (selectedFile.size > 200 * 1024) {
         alert("File is too large. Maximum size is 200KB.");
+      e.target.value = null;
         return;
       }
 
@@ -45,10 +47,10 @@ export default function Requirements() {
         }
         return {
           ...prev,
-          [key]: [...existingFiles, { name: selectedFile.name }],
+          [key]: [...existingFiles, selectedFile],
         };
       });
-    }
+  
     e.target.value = null;
   };
 
@@ -57,6 +59,39 @@ export default function Requirements() {
       ...prev,
       [key]: prev[key].filter((_, i) => i !== index),
     }));
+  };
+
+  const handleSubmit = async () => {
+    if (!canProceed) return;
+
+    const confirmSubmit = window.confirm(
+      "Are you sure you want to save these requirements?"
+    );
+    if (!confirmSubmit) return;
+
+    try {
+      const formData = new FormData();
+
+      Object.keys(files).forEach(key => {
+  files[key].forEach(file => {
+    formData.append("documents", file);
+  });
+});
+
+
+      await api.post("/applicant/requirements", formData, {
+  headers: {
+    "Content-Type": "multipart/form-data",
+    Authorization: `Bearer ${localStorage.getItem("token")}`
+  }
+});
+
+
+      alert("Requirements saved! You may now proceed to Interview.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload requirements.");
+    }
   };
 
   return (
@@ -130,10 +165,7 @@ export default function Requirements() {
                 ? "bg-green-700 hover:bg-green-800 text-white" 
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
               }`}
-              onClick={() => {
-                const confirmSubmit = window.confirm("Are you sure you want to save these requirements?");
-                if(confirmSubmit) alert("Requirements saved! You may now proceed to Interview.");
-              }}
+              onClick={handleSubmit}
             >
               Submit Requirements
             </button>

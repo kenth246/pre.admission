@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import StudentHeader from "../../../components/student/StudentHeader";
 import ProgressBar from "../../../components/student/ProgressBar";
+import api from "../../../services/api";
 
 export default function Requirements() {
   const [files, setFiles] = useState({});
@@ -41,7 +42,7 @@ export default function Requirements() {
           alert("Maximum 2 files allowed per requirement.");
           return prev;
         }
-        return { ...prev, [key]: [...existingFiles, { name: selectedFile.name }] };
+        return { ...prev, [key]: [...existingFiles, { name: selectedFile.name, file: selectedFile }] };
       });
     }
     e.target.value = null;
@@ -53,6 +54,32 @@ export default function Requirements() {
       [key]: prev[key].filter((_, i) => i !== index),
     }));
   };
+//* Backend Logic to submit files
+const submitRequirements = async () => {
+  try {
+      const formData = new FormData();
+
+      Object.keys(files).forEach(key => {
+          files[key].forEach(fileObj => {
+              // The backend 'upload.any()' middleware accepts this field name
+              formData.append("requirements", fileObj.file);
+          });
+      });
+
+      // FIXED URL HERE:
+      await api.post("/applicant/requirements", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      alert("Requirements uploaded successfully! You can now proceed to Interview.");
+      // Optional: Navigate to next page
+      // navigate('/student/interview'); 
+
+  } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.msg || "Upload failed. Please try again.");
+  }
+};
 
   return (
     <div className="min-h-screen bg-white pb-10">
@@ -107,9 +134,7 @@ export default function Requirements() {
             <button
               className="px-10 py-5 bg-green-700 hover:bg-green-800 text-white font-black rounded-2xl transition-all shadow-xl transform active:scale-95 uppercase tracking-[0.2em] text-sm disabled:bg-gray-300 disabled:cursor-not-allowed"
               disabled={!canProceed}
-              onClick={() => {
-                alert("Requirements saved! You can now proceed to Interview.");
-              }}
+               onClick={submitRequirements}
             >
               Submit Requirements
             </button>

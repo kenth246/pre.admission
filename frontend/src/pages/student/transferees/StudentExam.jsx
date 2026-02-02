@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import StudentHeader from '../../../components/student/StudentHeader.jsx';
 import ProgressBar2 from '../../../components/student/ProgressBar2.jsx';
+import api from '../../../services/api';
 
 export default function StudentExam() {
   const navigate = useNavigate();
@@ -31,13 +32,36 @@ export default function StudentExam() {
     ]
   });
 
-  const handleSubmitExam = (e) => {
-    e.preventDefault();
-    if (formRef.current && formRef.current.reportValidity()) {
-      setCanProceed(true);
-      alert("Examination Submitted Successfully!");
-    }
-  };
+	const handleSubmitExam = async (e) => {
+	e.preventDefault();
+	if (!formRef.current.reportValidity()) return;
+
+	try {
+		const formData = new FormData(formRef.current);
+		const answers = [];
+
+		for (const [key, value] of formData.entries()) {
+			if (!key.startsWith('answers[')) continue;
+			const match = key.match(/\d+/);
+			if (!match) continue;
+			const question_id = Number(match[0]);
+
+			answers.push({
+				question_id,
+				selected_choice: value,
+			});
+		}
+
+		await api.post('/assessment/exam', { answers });
+
+		setCanProceed(true);
+		alert('Examination Submitted Successfully!');
+	} catch (err) {
+		console.error(err);
+		alert('Failed to submit exam.');
+	}
+};
+
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -81,7 +105,7 @@ export default function StudentExam() {
                     <label key={oIndex} className="flex items-center space-x-3 cursor-pointer group">
                       <input
                         type="radio"
-                        name={`question-${q.id}`}
+                        name={`answers[${q.id}]`}
                         required
                         value={option}
                         className="w-5 h-5 border-gray-400 accent-green-700 cursor-pointer"

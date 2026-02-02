@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import StudentHeader from '../../components/student/StudentHeader.jsx';
 
 function StudentAdmission() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    //* Check if user is logged in
+    const user = localStorage.getItem("token");
+    if (!user) {
+        navigate("/student_login");
+    }
+  }, [navigate]);
   
   return (
     <div className="bg-gray-200 min-h-screen">

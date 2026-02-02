@@ -17,6 +17,4 @@ const InterviewSchema = new mongoose.Schema({
     status: { type: String, default: "Pending" }
 }, { timestamps: true });
 
-InterviewSchema.index({ applicant: 1 }, { unique: true });
-
 module.exports = mongoose.model('Interview', InterviewSchema);

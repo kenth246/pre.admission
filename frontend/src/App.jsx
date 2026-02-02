@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import StudentLogin from "./pages/student/StudentLogin";
 import StudentSignUp from "./pages/student/StudentSignUp";
 import StudentAdmission from "./pages/student/StudentAdmission";
@@ -22,12 +22,13 @@ import Assesment from "./pages/admin/Assesment.jsx"
 function App() {
   return (
     <Routes>
-
+	  <Route path="/" element={<Navigate to="/student_login" replace />} />
       {/* freshmen */}
       <Route path="/student_login" element={<StudentLogin />} />
       <Route path="/student_signup" element={<StudentSignUp />} />
       <Route path="/student_admission" element={<StudentAdmission />} />
-      <Route path="/profile" element={<StudentProfile />} />
+      <Route path="/student_profile" element={<StudentProfile />} />
+	  <Route path="/profile" element={<StudentProfile />} />
       <Route path="/education" element={<Education />} />
       <Route path="/interview" element={<StudentInterview />} />
       <Route path="/requirements" element={<Requirements />} />
@@ -44,8 +45,8 @@ function App() {
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/dashboard" element={<AdminDashboard />} />    
       <Route path="/applications" element={<Applications />} />  
-      <Route path="/assesment" element={<Assesment />} /> 
-
+      <Route path="/assessment" element={<Assesment />} />
+	  <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

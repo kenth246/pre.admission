@@ -2,12 +2,13 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import StudentHeader from '../../../components/student/StudentHeader.jsx';
 import ProgressBar2 from '../../../components/student/ProgressBar2.jsx';
+import api from "../../../services/api"; 
 
 export default function StudentExam() {
   const navigate = useNavigate();
   const formRef = useRef(null);
   const [canProceed, setCanProceed] = useState(false);
-
+  const [answers, setAnswers] = useState({});
   // This matches your admin examination.jsx setup
   const [examSetup, setExamSetup] = useState({
     title: "BTECH College Entrance Test",
@@ -31,13 +32,38 @@ export default function StudentExam() {
     ]
   });
 
-  const handleSubmitExam = (e) => {
-    e.preventDefault();
-    if (formRef.current && formRef.current.reportValidity()) {
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
+const handleSubmitExam = async (e) => {
+  e.preventDefault();
+
+  if (formRef.current && formRef.current.reportValidity()) {
+    try {
+      const formattedAnswers = Object.keys(answers).map(qId => ({
+        question_id: qId,
+        selected_choice: answers[qId]
+      }));
+
+      await api.post("/assessment/exam", {
+        answers: formattedAnswers
+      });
+
       setCanProceed(true);
       alert("Examination Submitted Successfully!");
+      navigate("/student_interview");
+
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.msg || "Exam submission failed.");
     }
-  };
+  }
+};
+
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -85,6 +111,7 @@ export default function StudentExam() {
                         required
                         value={option}
                         className="w-5 h-5 border-gray-400 accent-green-700 cursor-pointer"
+                        onChange={() => handleAnswerChange(q.id, option)}
                       />
                       <span className="text-m md:text-lg font-semibold text-gray-700 group-hover:text-black transition-colors">
                         {option}
@@ -97,9 +124,12 @@ export default function StudentExam() {
 
             {/* ACTION BUTTONS  */}
             <div className="flex justify-between items-center pt-6 px-2">
-             <button 
+              <button 
                 type="button"
-                onClick={() => formRef.current.reset()}
+                onClick={() => {
+                  formRef.current.reset();
+                  setAnswers({});
+                }}
                 className="text-gray-500 text-s text-sm mb-8 font-bold hover:text-red-600 uppercase tracking-wider transition-colors"
               >
                 Clear All

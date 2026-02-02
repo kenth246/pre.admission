@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import StudentHeader from '../../../components/student/StudentHeader.jsx';
 import ProgressBar2 from '../../../components/student/ProgressBar2.jsx';
+import api from '../../../services/api';
 
 export default function StudentInterview() {
   const navigate = useNavigate();
@@ -50,11 +51,31 @@ export default function StudentInterview() {
     }
   };
 
-  const handleFinalConfirm = () => {
-    setShowConfirmModal(false);
-    setCanProceed(true);
-    setShowSuccessModal(true);
+  const handleFinalConfirm = async () => {
+    try {
+      const raw = new FormData(formRef.current);
+
+      const responses = [
+        `First Choice: ${raw.get("firstChoiceCourse")}`,
+        `Second Choice: ${raw.get("secondChoiceCourse")}`,
+        `Q1: ${raw.get("answers[1]")}`,
+        `Q2: ${raw.get("answers[2]")}`,
+        `Q3: ${raw.get("answers[3]")}`,
+        `Q4: ${raw.get("answers[4]")}`
+      ];
+
+      await api.post("/assessment/interview", { responses });
+
+      setShowConfirmModal(false);
+      setCanProceed(true);
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to submit interview.");
+      setShowConfirmModal(false);
+    }
   };
+
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden relative font-sans">
@@ -85,24 +106,43 @@ export default function StudentInterview() {
             {/* COURSE CHOICE SECTION (MODIFIED TO DROPDOWNS) */}
             <div className="w-full bg-white p-6 border border-gray-300 rounded-xl shadow-sm">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* 1ST CHOICE DROPDOWN FIX */}
                 <div className="flex flex-col">
-                  <label className="text-[11px] font-bold text-gray-800 mb-1 uppercase">1st Choice Course <span className="text-red-500">*</span></label>
-                  <select required className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none">
-                    <option value="" disabled selected>Select your first choice</option>
+                  <label className="text-[11px] font-bold text-gray-800 mb-1 uppercase">
+                    1st Choice Course <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    name="firstChoiceCourse" 
+                    required 
+                    defaultValue="" 
+                    className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none"
+                  >
+                    <option value="" disabled>Select your first choice</option>
                     {courseOptions.map((course, idx) => (
                       <option key={idx} value={course}>{course}</option>
                     ))}
                   </select>
                 </div>
+
+                {/* 2ND CHOICE DROPDOWN FIX */}
                 <div className="flex flex-col">
-                  <label className="text-[11px] font-bold text-gray-800 mb-1 uppercase">2nd Choice Course <span className="text-red-500">*</span></label>
-                  <select required className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none">
-                    <option value="" disabled selected>Select your second choice</option>
+                  <label className="text-[11px] font-bold text-gray-800 mb-1 uppercase">
+                    2nd Choice Course <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    name="secondChoiceCourse" 
+                    required 
+                    defaultValue="" 
+                    className="w-full p-3 border-2 uppercase bg-gray-100 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-sm font-semibold appearance-none"
+                  >
+                    <option value="" disabled>Select your second choice</option>
                     {courseOptions.map((course, idx) => (
                       <option key={idx} value={course}>{course}</option>
                     ))}
                   </select>
                 </div>
+              
               </div>
             </div>
 
@@ -115,7 +155,7 @@ export default function StudentInterview() {
                 <p className="text-m md:text-xl font-black text-gray-800 border-b border-gray-300 pb-2">
                   {index + 1}. {q.text} <span className="text-red-500">*</span>
                 </p>
-                <textarea required placeholder="Type your answer here..." className="w-full bg-transparent uppercase border-none focus:ring-0 outline-none text-gray-900 resize-y text-sm lg:text-lg" rows="2"></textarea>
+                <textarea name={`answers[${q.id}]`} required placeholder="Type your answer here..." className="w-full bg-transparent uppercase border-none focus:ring-0 outline-none text-gray-900 resize-y text-sm lg:text-lg" rows="2"></textarea>
               </div>
             ))}
 

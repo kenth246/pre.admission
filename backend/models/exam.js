@@ -8,14 +8,13 @@ const ExamSchema = new mongoose.Schema({
         unique: true
     },
     answers: [{
-        question_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Question' },
+        // CHANGED: ObjectId -> String (To accept "1" from frontend)
+        question_id: { type: String },
         selected_choice: { type: String }
     }],
     score: { type: Number, default: 0 },
     total_questions: { type: Number },
     date_taken: { type: Date, default: Date.now }
 });
-
-ExamSchema.index({ applicant: 1 }, { unique: true });
 
 module.exports = mongoose.model('Exam', ExamSchema);
