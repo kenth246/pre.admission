@@ -86,7 +86,7 @@ const ApplicantSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        eenum: [
+        ennum: [
             'Pending',
             'Pending Interview',
             'Failed Interview',

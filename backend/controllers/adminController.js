@@ -4,10 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { logAudit } = require('../utils/auditLogger');
 // const { validateStatusTransition } = require('../utils/statusTransitions');
-const {
-    sendEnrollmentInstructions,
-    sendAdmissionConfirmation
-} = require('../utils/emailService');
+const { sendAdmissionConfirmation } = require('../utils/emailService');
 
 // LOGIN 
 exports.login = async(req, res) => {

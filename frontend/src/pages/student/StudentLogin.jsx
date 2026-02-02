@@ -26,10 +26,8 @@ export default function StudentLogin() {
 
 localStorage.setItem("token", response.data.token);
 localStorage.setItem("username", username);
-
 navigate("/student_admission");
 
-// FORCE redirect so auth guard sees token
 window.location.replace("/student_admission");
 
   } catch (err) {
