@@ -9,7 +9,6 @@ export default function StudentExam() {
   const formRef = useRef(null);
   const [canProceed, setCanProceed] = useState(false);
   const [answers, setAnswers] = useState({});
-  // This matches your admin examination.jsx setup
   const [examSetup, setExamSetup] = useState({
     title: "BTECH College Entrance Test",
     instructions: "Please read each question carefully and select the best answer. You can only submit your answers once.",

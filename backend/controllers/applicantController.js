@@ -8,14 +8,12 @@ exports.setApplicantType = async(req, res) => {
         const applicantId = req.user.id;
         const { applicantType } = req.body;
 
-        // 1. Validation
         if (!["freshman", "transferee"].includes(applicantType)) {
             return res.status(400).json({ msg: "Invalid applicant type" });
         }
 
-        // 2. Update directly (Removed the 'already set' check so you can fix data freely)
         const updatedApplicant = await Applicant.findByIdAndUpdate(
-            applicantId, { applicantType: applicantType }, { new: true } // Return the updated document
+            applicantId, { applicantType: applicantType }, { new: true }
         );
 
         if (!updatedApplicant) {
@@ -33,10 +31,7 @@ exports.setApplicantType = async(req, res) => {
     }
 };
 
-
-/* =========================
-   REGISTER
-========================= */
+// REGISTER
 exports.register = async(req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -67,14 +62,12 @@ exports.register = async(req, res) => {
     }
 };
 
-/* =========================
-   LOGIN
-========================= */
+// LOGIN
 exports.login = async(req, res) => {
     try {
         const { username, password } = req.body;
 
-        // find applicant by username (frontend sends username)
+        // find applicant by username
         const applicant = await Applicant.findOne({ username });
         if (!applicant) {
             return res.status(401).json({ msg: "Invalid credentials" });
@@ -107,14 +100,10 @@ exports.login = async(req, res) => {
 };
 
 
-/* =========================
-   GET PROFILE
-========================= */
+// GET PROFILE
 exports.getProfile = async(req, res) => {
     try {
-        // REMOVED: Token verification (handled by route bypass now)
 
-        // Use the hardcoded ID from req.user
         const applicant = await Applicant.findById(req.user.id).select("-password");
 
         if (!applicant) {
@@ -128,9 +117,7 @@ exports.getProfile = async(req, res) => {
     }
 };
 
-/* =========================
-   UPDATE PROFILE
-========================= */
+// UPDATE PROFILE
 exports.updateProfile = async(req, res) => {
     try {
         const applicant = await Applicant.findById(req.user.id);
@@ -152,7 +139,6 @@ exports.updateProfile = async(req, res) => {
         const parsedData = JSON.parse(req.body.data);
         const updateData = {...parsedData };
 
-        // Merge nested objects safely
         if (parsedData.address) {
             updateData.address = {
                 ...(applicant.address ? applicant.address.toObject() : {}),
@@ -196,14 +182,9 @@ exports.updateProfile = async(req, res) => {
 }
 
 
-/* =========================
-   UPLOAD REQUIREMENTS
-========================= */
+// UPLOAD REQUIREMENTS
 exports.uploadRequirements = async(req, res) => {
     try {
-        // REMOVED: Token verification
-
-        // FIX: Fetch applicant FIRST before checking 'isSubmitted'
         const applicant = await Applicant.findById(req.user.id);
 
         if (!applicant) {

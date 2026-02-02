@@ -5,7 +5,7 @@ import api from "../../../services/api";
 
 export default function Requirements() {
   const [files, setFiles] = useState({});
-  // This state will control the ProgressBar's next button
+  // Control the ProgressBar's next button
   const [canProceed, setCanProceed] = useState(false);
 
   // List of requirements with a 'required' flag based on your asterisk rule
@@ -88,6 +88,7 @@ export default function Requirements() {
 
 
       alert("Requirements saved! You may now proceed to Interview.");
+      navigate("/student/interview");
     } catch (err) {
       console.error(err);
       alert("Failed to upload requirements.");

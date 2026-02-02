@@ -78,6 +78,8 @@ export default function Education() {
 
       setCanProceed(true);
       alert("Education Profile Saved Successfully! You can now proceed to Requirements.");
+      navigate("/requirements");
+
     } catch (err) {
       console.error("Save Error:", err);
       const msg = err.response?.data?.msg || "Failed to save education profile.";

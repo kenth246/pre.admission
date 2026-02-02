@@ -19,7 +19,7 @@ exports.sendAdmissionConfirmation = async(email, name) => {
     return transporter.sendMail(mailOptions);
 };
 
-// Sending BceT Link Email
+// Sending BCET Link Email
 exports.sendLink = async(email, type, username) => {
     const websiteLink = `http://localhost:5173/student/freshmen/${type}`;
 
@@ -33,13 +33,32 @@ exports.sendLink = async(email, type, username) => {
     return transporter.sendMail(mailOptions);
 };
 
-// Enrollment Confirmation Email
-exports.sendEnrollmentInstructions = async(email) => {
+// Enrollment Email with PDF Link
+exports.sendEnrollmentInstructions = async(email, applicantId) => {
+
+    const pdfLink = `http://localhost:5000/api/admission-slip/${applicantId}`;
+
     const mailOptions = {
         from: 'IITI Admissions',
         to: email,
-        subject: 'CONGRATULATIONS: Enrollment Instructions',
-        text: `You have passed the Baliuag Polytechnic College Entrance Exam (BCeT)! Please proceed to the Registrar's Office to finalize your application.`
+        subject: 'CONGRATULATIONS: You are Admitted!',
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                <h2 style="color: #15803d;">Congratulations!</h2>
+                <p>You have passed the Baliuag Polytechnic College Entrance Exam (BCET)!</p>
+                <p>We are pleased to inform you that you have been <strong>ADMITTED</strong>.</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                
+                <p>Please download your official <strong>Admission Slip</strong> below and present it to the Registrar's Office to finalize your enrollment.</p>
+                
+                <br>
+                <a href="${pdfLink}" style="background-color: #15803d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    DOWNLOAD ADMISSION SLIP
+                </a>
+                <br><br>
+                <p style="font-size: 12px; color: #777;">Or copy this link: ${pdfLink}</p>
+            </div>
+        `
     };
     return transporter.sendMail(mailOptions);
 };

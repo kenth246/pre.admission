@@ -6,11 +6,11 @@ function StudentAdmission() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    //* Check if user is logged in
+    // Check if user is logged in
     const user = localStorage.getItem("token");
-    if (!user) {
-        navigate("/student_login");
-    }
+    //if (!user) {
+    //    navigate("/student_login");
+    //}
   }, [navigate]);
   
   return (

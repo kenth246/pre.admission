@@ -86,8 +86,16 @@ const ApplicantSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        enum: ["Pending", "Passed", "Rejected", "Admitted"],
-        default: "Pending"
+        eenum: [
+            'Pending',
+            'Pending Interview',
+            'Failed Interview',
+            'Pending BCET',
+            'Passed BCET',
+            'Failed BCET',
+            'Admitted'
+        ],
+        default: 'Pending'
     }
 }, { timestamps: true });
 

@@ -21,6 +21,7 @@ export default function Header() {
     console.log("Logging out...");
     navigate("/student_login");
   };
+
   useEffect(() => {
   const fetchProfilePhoto = async () => {
     try {

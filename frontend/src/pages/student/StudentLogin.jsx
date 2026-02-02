@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom"; //*
-import api from "../../services/api"; //*
+import { useNavigate, Link } from "react-router-dom";
+import api from "../../services/api";
 
 export default function StudentLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
-  const [loading, setLoading] = useState(false); //*
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   
@@ -24,7 +24,7 @@ export default function StudentLogin() {
 
     const response = await api.post("/applicant/login", { username, password });
 
-localStorage.setItem("token", response.data.token); // 🔥 REQUIRED
+localStorage.setItem("token", response.data.token);
 localStorage.setItem("username", username);
 
 navigate("/student_admission");

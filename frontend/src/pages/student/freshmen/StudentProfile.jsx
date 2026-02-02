@@ -87,8 +87,6 @@ export default function Profile() {
 
         // Populate Family inputs
         if (data.family) {
-           // Flatten nested family structure if needed or assume simple keys
-           // Based on your previous controller, family might be an object
            Object.entries(data.family).forEach(([key, value]) => {
               const input = formRef.current.querySelector(`[name="${key}"]`);
               if (input) input.value = value;
@@ -113,7 +111,6 @@ export default function Profile() {
     fetchProfile();
   }, []);
 
-  // --- ADDED: THE MISSING SAVE FUNCTION ---
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     try {
@@ -158,7 +155,7 @@ export default function Profile() {
                 familyIncome: formData.get('familyIncome'),
             },
             
-            otherInfo: formData.getAll('otherInfo') // Gets all checked boxes
+            otherInfo: formData.getAll('otherInfo')
         };
 
         // 2. Wrap in FormData for file upload
@@ -176,7 +173,8 @@ export default function Profile() {
 
         alert("Profile saved successfully!");
         setCanProceed(true);
-        // navigate('/next-step'); // Optional: Redirect if you want
+        navigate("/education");
+
     } catch (err) {
         console.error("Save Error:", err);
         alert("Failed to save profile. Check console for details.");

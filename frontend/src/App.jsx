@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+// Student Pages
 import StudentLogin from "./pages/student/StudentLogin";
 import StudentSignUp from "./pages/student/StudentSignUp";
 import StudentAdmission from "./pages/student/StudentAdmission";
@@ -7,46 +8,56 @@ import Education from "./pages/student/freshmen/Education.jsx";
 import StudentInterview from "./pages/student/freshmen/StudentInterview.jsx";
 import Requirements from "./pages/student/freshmen/Requirements.jsx";
 import StudentExam from "./pages/student/freshmen/StudentExam.jsx";
-
+// Transferee Pages
 import TransfereeProfile from "./pages/student/transferees/StudentProfile.jsx";
 import TransfereeEducation from "./pages/student/transferees/Education.jsx";
 import TransfereeInterview from "./pages/student/transferees/StudentInterview.jsx";
 import TransfereeRequirements from "./pages/student/transferees/Requirements.jsx";
 import TransfereeExam from "./pages/student/transferees/StudentExam.jsx";
-
+// Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
-import Applications from "./pages/admin/Applications.jsx"
-import Assesment from "./pages/admin/Assesment.jsx"
+import Applications from "./pages/admin/Applications.jsx";
+import Assesment from "./pages/admin/Assesment.jsx";
+import Admission from "./pages/admin/Admission.jsx";
+import Settings from "./pages/admin/Settings.jsx";
 
 function App() {
   return (
     <Routes>
-	  <Route path="/" element={<Navigate to="/student_login" replace />} />
-      {/* freshmen */}
+      <Route path="/" element={<Navigate to="/student_login" replace />} />
+      
+      {/* FRESHMEN ROUTES */}
       <Route path="/student_login" element={<StudentLogin />} />
       <Route path="/student_signup" element={<StudentSignUp />} />
       <Route path="/student_admission" element={<StudentAdmission />} />
       <Route path="/student_profile" element={<StudentProfile />} />
-	  <Route path="/profile" element={<StudentProfile />} />
+      <Route path="/profile" element={<StudentProfile />} />
       <Route path="/education" element={<Education />} />
       <Route path="/interview" element={<StudentInterview />} />
       <Route path="/requirements" element={<Requirements />} />
       <Route path="/exam" element={<StudentExam />} />
 
-      {/* Transferee */}
+      {/* TRANSFEREE ROUTES */}
       <Route path="/transferee_profile" element={<TransfereeProfile />} />
       <Route path="/transferee_education" element={<TransfereeEducation />} />
       <Route path="/transferee_interview" element={<TransfereeInterview />} />
       <Route path="/transferee_requirements" element={<TransfereeRequirements />} />
       <Route path="/transferee_exam" element={<TransfereeExam />} />
 
-      {/* ADMIN */}
+      {/* ADMIN ROUTES */}
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/dashboard" element={<AdminDashboard />} />    
       <Route path="/applications" element={<Applications />} />  
+      <Route path="/admin_admission" element={<Admission />} />
+      <Route path="/settings" element={<Settings />} />
+      
+      {/* Assessment Routes */}
       <Route path="/assessment" element={<Assesment />} />
-	  <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/assesment" element={<Assesment />} /> 
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

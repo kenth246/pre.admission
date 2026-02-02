@@ -174,7 +174,7 @@ const handleSaveProfile = async (e) => {
 formData.append("data", JSON.stringify(payload));
 
 if (profileImage) {
-  formData.append("photo", profileImage); // 🔥 FIELD NAME MUST BE "photo"
+  formData.append("photo", profileImage);
 }
 
 await api.put("/applicant/profile", formData, {
@@ -187,6 +187,7 @@ await api.put("/applicant/profile", formData, {
 
     setCanProceed(true);
     alert("Profile Saved Successfully! You can now click the arrow to proceed to Educational Profile.");
+    navigate("/education");
   } catch (err) {
     console.error(err);
     alert("Failed to save profile.");

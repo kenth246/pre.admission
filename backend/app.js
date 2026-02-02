@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
+const pdfController = require('./controllers/pdfController'); // <--- 1. ADD THIS IMPORT
 
 dotenv.config();
 const app = express();
@@ -16,6 +17,11 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const Applicant = require('./models/applicant');
 
+// --- NEW PDF ROUTE ---
+// This handles the link sent in the email (e.g., /api/admission-slip/65b...)
+app.get('/api/admission-slip/:id', pdfController.generateAdmissionSlip); // <--- 2. ADD THIS ROUTE
+
+// Debug Route
 app.get('/api/debug/create', async(req, res) => {
     try {
         const user = await Applicant.create({
@@ -29,6 +35,8 @@ app.get('/api/debug/create', async(req, res) => {
         res.status(500).send(err.message);
     }
 });
+
+// Route Imports
 require('./routes/applicantRoute')(app);
 require('./routes/adminRoute')(app);
 require('./routes/assessmentRoute')(app);
@@ -37,6 +45,7 @@ require('./routes/questionRoute')(app);
 app.get('/', (req, res) => res.send('Admission System API is running...'));
 
 mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB Connected"))
     .catch(err => {
         console.error(err);
         process.exit(1);

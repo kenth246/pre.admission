@@ -8,7 +8,6 @@ const ExamSchema = new mongoose.Schema({
         unique: true
     },
     answers: [{
-        // CHANGED: ObjectId -> String (To accept "1" from frontend)
         question_id: { type: String },
         selected_choice: { type: String }
     }],

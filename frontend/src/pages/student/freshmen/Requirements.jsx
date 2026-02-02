@@ -5,17 +5,15 @@ import api from "../../../services/api";
 
 export default function Requirements() {
   const [files, setFiles] = useState({});
-  // canProceed is initialized to true because asterisk items are not mandatory
   const [canProceed, setCanProceed] = useState(true);
 
   const requirementList = [
     { name: "Original Grade 12 Report Card*", key: "g12_card", isOptional: true },
     { name: "Original Certificate of Good Moral*", key: "good_moral", isOptional: true },
     { name: "Photocopy of SHS Diploma*", key: "diploma", isOptional: true },
-    { name: "Photocopy of PSA Birth Certificate", key: "birth_cert", isOptional: false }, // No asterisk, usually required
+    { name: "Photocopy of PSA Birth Certificate", key: "birth_cert", isOptional: false },
   ];
 
-  // Logic: Only block if a requirement WITHOUT an asterisk is missing
   useEffect(() => {
     const mandatoryKeys = requirementList
       .filter(item => !item.isOptional)
@@ -54,26 +52,23 @@ export default function Requirements() {
       [key]: prev[key].filter((_, i) => i !== index),
     }));
   };
-//* Backend Logic to submit files
+// Backend Logic to submit files
 const submitRequirements = async () => {
   try {
       const formData = new FormData();
 
       Object.keys(files).forEach(key => {
           files[key].forEach(fileObj => {
-              // The backend 'upload.any()' middleware accepts this field name
               formData.append("requirements", fileObj.file);
           });
       });
 
-      // FIXED URL HERE:
       await api.post("/applicant/requirements", formData, {
           headers: { "Content-Type": "multipart/form-data" }
       });
 
       alert("Requirements uploaded successfully! You can now proceed to Interview.");
-      // Optional: Navigate to next page
-      // navigate('/student/interview'); 
+      navigate('/student/interview'); 
 
   } catch (error) {
       console.error(error);
