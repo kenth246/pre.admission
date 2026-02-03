@@ -1,9 +1,266 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from '../../components/Header.jsx';
 import api from '../../services/api';
-import { FaSearch, FaFilter, FaEye, FaPlus, FaTimes, FaFileDownload, FaSearchPlus, FaSearchMinus, FaRedo } from "react-icons/fa"; 
+import { FaSearch, FaFilter, FaEye, FaPlus, FaTimes, FaFileDownload, FaSearchPlus, FaSearchMinus, FaRedo, FaFileExport, FaPrint } from "react-icons/fa"; 
 import { FileText, CheckCircle, XCircle } from "lucide-react"; 
+import { useReactToPrint } from "react-to-print";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+const API_BASE_URL = "http://localhost:5000";
+
+// --- PRINTABLE TEMPLATE COMPONENT ---
+const AdmissionFormTemplate = forwardRef(({ applicant }, ref) => {
+  if (!applicant) return null;
+
+  const { personal, family, education } = applicant.profile;
+
+  // UPDATED: Check for both singular and plural to ensure it captures all data types
+  const typeLower = (applicant.type || "").toLowerCase();
+  const isFreshman = typeLower.includes("freshman") || typeLower.includes("freshmen");
+  const isTransferee = typeLower.includes("transferee");
+
+  // --- FIXED IMAGE URL LOGIC FOR PRINT ---
+  // If image comes from DB (e.g., "/uploads/photo.jpg"), add localhost:5000
+	const imgSrc = personal.image 
+    ? (personal.image.startsWith('http') || personal.image.startsWith('blob')
+        ? personal.image 
+        : `${API_BASE_URL}${personal.image}`)
+    : null;
+
+  // Helper for underlined fields
+  const Field = ({ label, value, width = "w-full", labelWidth = "auto" }) => (
+    <div className={`flex items-end gap-2 ${width}`}>
+      <span className="text-[10px] font-medium whitespace-nowrap" style={{ width: labelWidth }}>{label}</span>
+      <div className="border-b  border-black flex-1  text-[11px] font-normal px-1 truncate leading-none pb-0.5">
+        {value || "\u00A0"}
+      </div>
+    </div>
+  );
+
+  const CheckBox = ({ label, checked }) => (
+    <div className="flex items-center gap-1">
+      <div className={`w-3 h-3 border border-black flex items-center justify-center text-[10px]`}>
+        {checked ? "✓" : ""}
+      </div>
+      <span className="text-[10px]">{label}</span>
+    </div>
+  );
+
+  return (
+    <div ref={ref} className="bg-white p-8 mx-auto justify-center text-black font-serif text-sm leading-tight w-[8.5in] min-h-[11in] relative">
+      
+      {/* --- ID PICTURE (2x2 inches) --- */}
+      <div className="absolute top-32 right-8 w-[2in] h-[2in] border border-black flex items-center justify-center text-[9px] text-gray-400 bg-white overflow-hidden z-20">
+         {personal.image ? <img src={personal.image} className="w-full h-full object-cover" alt="ID" /> : "2x2 ID Picture"}
+      </div>
+
+      {/* --- HEADER --- */}
+      <div className="text-center mb-4 relative px-20"> 
+        
+        {/* LOGO LEFT */}
+        <div className="absolute top-0 left-12">
+             <img 
+                src="/img/btech.png" 
+                className="w-20 h-20 object-contain" 
+                alt="Left Logo" 
+             />
+        </div>
+
+        {/* LOGO RIGHT */}
+        <div className="absolute top-0 right-12">
+             <img 
+                src="/img/iiti.png" 
+                className="w-20 h-20 object-contain" 
+                alt="Right Logo" 
+             />
+        </div>
+        
+        <div className="mt-4 mb-2">
+            <h1 className="font-bold text-sm tracking-wide mt-2">DALUBHASAANG POLITEKNIKO NG LUNGSOD NG BALIWAG</h1>
+            <h2 className="font-bold text-xs italic mb-1">Institute of Information Technology and Innovation</h2>
+            <h1 className="font-black text-xl underline tracking-wider mt-6">IITI PRE-ADMISSION FORM</h1>
+            <p className="font-bold text-xs">Academic Year 2025 - 2026</p>
+        </div>
+
+        {/* Constrain width to 72% to ensure these fields stop before the ID box */}
+        <div className="flex justify-between items-end mt-8 px-4 w-[72%]"> 
+           <div className="flex gap-4">
+              <CheckBox label="Freshmen" checked={isFreshman} />
+              <CheckBox label="Transferee" checked={isTransferee} />
+           </div>
+           
+           <div className="flex gap-4 w-7/12">
+              <Field label="LRN:" value={education.lrn} />
+              <Field label="Date:" value={applicant.date} />
+           </div>
+        </div>
+      </div>
+
+      {/* --- PERSONAL INFORMATION --- */}
+      <div className="mb-7 mt-10">
+        <h3 className="font-bold text-[11px] uppercase mb-0.5">Personal Information</h3>
+        <div className="border-b w-[72%] border-black mb-3"></div>
+
+        <div className="grid mb-4 grid-cols-1 gap-4"> 
+            
+            <div className="flex gap-2 w-[72%]">
+                <Field label="Full Name:" value={`${personal.surname}, ${personal.firstName} ${personal.middleName} ${personal.suffix || ''}`} />
+                <div className="flex gap-2 shrink-0 ml-2">
+                    <span className="text-[10px] font-medium">Gender:</span>
+                    <CheckBox label="Male" checked={personal.gender === 'MALE'} />
+                    <CheckBox label="Female" checked={personal.gender === 'FEMALE'} />
+                </div>
+            </div>
+            
+            <div className="flex gap-2 w-[72%]">
+                <Field label="Date of Birth:" value={personal.dob} width="w-1/3" />
+                <Field label="Place of Birth:" value={personal.pob} width="w-2/3" />   
+            </div>
+
+            <div className="flex gap-2 mt-2">                
+               <Field label="Civil Status:" value={personal.civilStatus} width="w-1/3" />
+                <Field label="Nationality:" value={personal.nationality} width="w-1/4" />
+                <Field label="Religion:" value={personal.religion} width="w-1/4" />    
+                <Field label="Email Address:" value={personal.email} width="w-1/4"/> 
+                <Field label="Contact No.:" value={personal.contact} width="w-1/4" />
+            </div> 
+
+            <div className="lg-colspan gap-2">              
+                <Field label="Residential Address:" value={personal.address} />
+            </div>
+        </div>
+      </div>
+
+      {/* --- FAMILY INFORMATION --- */}
+      <div className="mb-7">
+        <h3 className="font-bold text-[11px] uppercase mb-0.5">Family Information</h3>
+        <div className="border-b border-black mb-3"></div>
+
+        <div className=" mb-4 space-y-3">
+             {/* Father */}
+            <div className="flex mb-3 gap-2">
+                <Field label="Father's Name:" value={family.fatherName} width="w-1/2" />
+                <Field label="Occupation:" value={family.fatherOcc} width="w-1/4" />
+                <Field label="Contact No.:" value={family.fatherContact} width="w-1/4" />
+            </div>
+            {/* Mother */}
+            <div className="flex gap-2">
+                <Field label="Mother's Name:" value={family.motherName} width="w-1/2" />
+                <Field label="Occupation:" value={family.motherOcc} width="w-1/4" />
+                <Field label="Contact No.:" value={family.motherContact} width="w-1/4" />
+            </div>
+            {/* Guardian */}
+             <div className="flex gap-2">
+                <Field label="Guardian's Name:" value={family.guardianName} width="w-1/2" />
+                <Field label="Occupation:" value={family.guardianOcc} width="w-1/4" />
+                <Field label="Contact No.:" value={family.guardianContact} width="w-1/4" />
+            </div>
+             <div className="flex gap-2">
+                <Field label="Number of Siblings:" value={family.siblings} width="w-1/3" />
+                <Field label="Family Monthly Income:" value={family.income} width="w-2/3" />
+            </div>
+        </div>
+      </div>
+
+      {/* --- EDUCATION INFORMATION --- */}
+      <div className="mb-4">
+        <h3 className="font-bold text-[11px] uppercase mb-0.5">Education Information</h3>
+        <div className="border-b border-black mb-3"></div>
+
+        <div className="flex gap-2 mb-3">
+             <Field label="LRN/Student Number:" value={education.lrn} width="w-1/2" />
+             <Field label="General Weighted Average:" value={education.gwa} width="w-1/2" />
+        </div>
+        
+        <div className="space-y-3">
+            <div className="flex gap-2">
+                <Field label="Elementary:" value={education.elementary} width="w-5/12" />
+                <Field label="Address:" value={education.elemAddr} width="w-5/12" />
+                <Field label="Type:" value={education.elemType} width="w-2/12" />                
+                <Field label="Year:" value={education.elemYear} width="w-2/12" />
+            </div>
+            <div className="flex gap-2">
+                <Field label="Junior HS:" value={education.jhs} width="w-5/12" />
+                <Field label="Address:" value={education.jhsAddr} width="w-5/12" />
+                <Field label="Type:" value={education.jhsType} width="w-2/12" />                
+                <Field label="Year:" value={education.jhsYear} width="w-2/12" />
+            </div>
+            <div className="flex gap-2">
+                <Field label="Senior HS:" value={education.shs} width="w-5/12" />
+                <Field label="Address:" value={education.shsAddr} width="w-5/12" />
+                <Field label="Type:" value={education.shsType} width="w-2/12" />
+                <Field label="Year:" value={education.shsYear} width="w-2/12" />
+            </div>
+            
+            {isTransferee && (
+                 <div className="flex gap-2">
+                    <Field label="Last School:" value={education.lastSchool} width="w-5/12" />
+                    <Field label="Address:" value={education.lastSchoolAddr} width="w-5/12" />
+                    <Field label="Type:" value={education.lastSchoolType} width="w-2/12" />
+                </div>
+            )}
+        </div>
+      </div>
+
+      {/* --- SUBMITTED DOCUMENTS CHECKLIST --- */}
+      <div className="mb-4 border-t border-b border-black py-2 mt-6">
+        <h3 className="font-bold text-[11px] uppercase mb-1 text-center">Submitted Documents Checklist</h3>
+        <div className="grid grid-cols-2 gap-8 px-4">
+            <div>
+                <h4 className="font-bold text-[10px] underline mb-1">Freshmen</h4>
+                <div className="space-y-1">
+                    <CheckBox label="Original Grade 12 Report Card" checked={isFreshman} />
+                    <CheckBox label="Original Certificate of Good Moral" checked={isFreshman} />
+                    <CheckBox label="Photocopy of SHS Diploma" checked={false} />
+                    <CheckBox label="Photocopy of PSA Birth Certificate" checked={true} />
+                </div>
+            </div>
+            <div>
+                <h4 className="font-bold text-[10px] underline mb-1">Transferees</h4>
+                <div className="space-y-1">
+                    <CheckBox label="Original Transcript of Records" checked={isTransferee} />
+                    <CheckBox label="Original Honorable Dismissal" checked={isTransferee} />
+                    <CheckBox label="Original Copy of Grades" checked={isTransferee} />
+                    <CheckBox label="Photocopy of PSA Birth Certificate" checked={true} />
+                </div>
+            </div>
+        </div>
+      </div>
+
+      {/* --- ASSESSMENT RESULTS --- */}
+      <div>
+        <h3 className="font-bold text-[11px] uppercase mb-1 text-center">Assessment Results</h3>
+        <div className="grid grid-cols-2 gap-4 mt-2">
+            <div className="border border-black p-2 h-20 relative">
+                <span className="text-[9px] font-bold absolute top-1 left-2">Initial Interview</span>
+                <div className="flex flex-col items-center justify-center h-full pt-2">
+                    <span className="font-medium text-xl">{applicant.assessment.interviewScore || "N/A"}</span>
+                    <span className="text-[10px] font-bold uppercase">{applicant.assessment.interviewStatus}</span>
+                </div>
+            </div>
+            <div className="border border-black p-2 h-20 relative">
+                 <span className="text-[9px] font-bold absolute top-1 left-2">BTECH College Entrance Test (BCET)</span>
+                 <div className="flex flex-col items-center justify-center h-full pt-2">
+                    <span className="font-medium text-xl">{applicant.assessment.bcetScore || "N/A"}</span>
+                    <span className="text-[10px] font-bold uppercase">{applicant.assessment.bcetStatus}</span>
+                </div>
+            </div>
+        </div>
+      </div>
+
+       {/* --- FOOTER / SIGNATURES --- */}
+       <div className="mt-12 flex justify-between px-8">
+            <div className="flex flex-col items-center w-5/12">
+                 <div className="border-b border-black w-full text-center font-normal text-[11px] uppercase"></div>
+                 <span className="text-[10px] font-bold mt-1">Applicant's Signature over Printed Name</span>
+            </div>
+       </div>
+
+    </div>
+  );
+});
 
 export default function Admission() {
   const navigate = useNavigate();
@@ -14,7 +271,15 @@ export default function Admission() {
   
   // --- PREVIEW STATE ---
   const [previewDoc, setPreviewDoc] = useState(null);
-  const [zoomLevel, setZoomLevel] = useState(0.8); // Default to 80% width
+  const [zoomLevel, setZoomLevel] = useState(0.8); 
+
+  // --- PRINT STATE ---
+  const printRef = useRef(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: selectedApplicant ? `${selectedApplicant.id}_Admission_Form` : "Admission_Form",
+  });
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,11 +404,10 @@ export default function Admission() {
   });
 
   // --- ZOOM HANDLERS ---
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3.0)); // +20%
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.2)); // -20%
-  const handleResetZoom = () => setZoomLevel(0.8); // Reset to 80% width
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.2, 3.0)); 
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.2, 0.2)); 
+  const handleResetZoom = () => setZoomLevel(0.8); 
 
-  // Reset Zoom when opening a new document
   const openPreview = (doc) => {
     // Handle relative backend URLs
     let url = doc.url;
@@ -177,84 +441,92 @@ export default function Admission() {
     }));
   };
 
-  // --- SAVE TO DATABASE ---
-  const handleAddSubmit = async () => {
-    try {
-        const status = (newApplicant.assessment.interviewStatus === "Passed" && newApplicant.assessment.bcetStatus === "Passed") ? "Passed" : "Failed";
+  const handleAddSubmit = () => {
+    const id = `2026-000${applicants.length + 1}`;
+    const name = `${newApplicant.profile.personal.firstName} ${newApplicant.profile.personal.surname}`.toUpperCase();
+    const location = newApplicant.profile.personal.address.split(",").pop()?.trim().toUpperCase() || "UNKNOWN";
+    
+    const status = (newApplicant.assessment.interviewStatus === "Passed" && newApplicant.assessment.bcetStatus === "Passed") ? "Passed" : "Failed";
 
-        // Payload for Backend
-        const payload = {
-            firstName: newApplicant.profile.personal.firstName,
-            lastName: newApplicant.profile.personal.surname,
-            type: newApplicant.type,
-            status: status,
-            // Pass full profile structure
-            profile: newApplicant.profile,
-            assessment: newApplicant.assessment
-        };
+    const applicantToAdd = {
+        id,
+        name,
+        type: newApplicant.type,
+        location,
+        date: new Date().toLocaleDateString(),
+        status: status, 
+        assessment: { ...newApplicant.assessment },
+        profile: {
+            ...newApplicant.profile,
+            documents: [] // Empty docs
+        }
+    };
 
-        // Send to Backend
-        await api.post('/admin/applicant/add', payload); 
-        
-        // Refresh List
-        fetchApplicants();
-        setIsAddModalOpen(false);
-
-        // Reset form
-        setNewApplicant({
-            type: "Freshmen",
-            assessment: { interviewScore: "", interviewStatus: "Pending", bcetScore: "", bcetStatus: "Pending" },
-            profile: {
-            personal: { firstName: "", middleName: "", surname: "", suffix: "", dob: "", pob: "", gender: "MALE", email: "", civilStatus: "SINGLE", contact: "", address: "" },
-            family: { fatherName: "", fatherOcc: "", fatherContact: "", motherName: "", motherOcc: "", motherContact: "", guardianName: "", guardianOcc: "", guardianContact: "", siblings: "", income: "" },
-            education: { lrn: "", gwa: "", elementary: "", elemAddr: "", elemType: "PUBLIC", elemYear: "", jhs: "", jhsAddr: "", jhsType: "PUBLIC", jhsYear: "", shs: "", shsAddr: "", shsType: "PUBLIC", shsYear: "", lastSchool: "", lastSchoolAddr: "", lastSchoolType: "" }
-            }
-        });
-        alert("Applicant added successfully!");
-    } catch (err) {
-        console.error("Failed to add applicant", err);
-        alert("Failed to save applicant. Please try again.");
-    }
+    setApplicants([...applicants, applicantToAdd]);
+    setIsAddModalOpen(false);
+    
+    setNewApplicant({
+        type: "Freshmen",
+        assessment: { interviewScore: "", interviewStatus: "Pending", bcetScore: "", bcetStatus: "Pending" },
+        profile: {
+          personal: { firstName: "", middleName: "", surname: "", suffix: "", dob: "", pob: "", gender: "MALE", email: "", civilStatus: "SINGLE", contact: "", address: "" },
+          family: { fatherName: "", fatherOcc: "", fatherContact: "", motherName: "", motherOcc: "", motherContact: "", guardianName: "", guardianOcc: "", guardianContact: "", siblings: "", income: "" },
+          education: { lrn: "", gwa: "", elementary: "", elemAddr: "", elemType: "PUBLIC", elemYear: "", jhs: "", jhsAddr: "", jhsType: "PUBLIC", jhsYear: "", shs: "", shsAddr: "", shsType: "PUBLIC", shsYear: "", lastSchool: "", lastSchoolAddr: "", lastSchoolType: "" }
+        }
+    });
   };
 
-const filteredApplicants = applicants.filter((a) => {
-    // 1. Safe Variable Access
-    const id = a.id || "";
-    const name = a.name || "";
-    const type = a.type || "";
-    const location = a.location || "";
-    const status = (a.status || "").toLowerCase();
-
-    // 2. Search Query Logic
-    const searchText = `${id} ${name} ${type} ${status}`.toLowerCase();
-    if (searchQuery && !searchText.includes(searchQuery.toLowerCase())) return false;
-
-    // 3. Type Filter (Freshmen, Transferees)
-    if (typeFilter && type !== typeFilter) return false;
-
-    // 4. Location Filter
-    if (locationFilter && !location.includes(locationFilter)) return false; 
-
-    // 5. STATUS FILTERING
-    if (statusFilter) {
-        const filter = statusFilter.toLowerCase();
-
-        if (filter === "passed") {
-            if (!status.includes("passed") && !status.includes("admitted")) return false;
-        } 
-        else if (filter === "failed") {
-            if (!status.includes("failed")) return false;
-        } 
-        else if (filter === "pending") {
-            if (!status.includes("pending")) return false;
-        }
-        else {
-            if (status !== filter) return false;
-        }
-    }
-
+  const filteredApplicants = applicants.filter((a) => {
+    const text = `${a.id} ${a.name} ${a.type} ${a.status}`.toLowerCase();
+    if (searchQuery && !text.includes(searchQuery.toLowerCase())) return false;
+    if (typeFilter && a.type !== typeFilter) return false;
+    if (locationFilter && a.location !== locationFilter) return false; 
+    if (statusFilter && a.status !== statusFilter) return false;
     return true;
   });
+
+  // --- EXPORT PDF FUNCTION (JSPDF) ---
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+
+    // Add Header Information
+    doc.setFontSize(18);
+    doc.text("LIST OF APPLICANTS", 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+    // Define Columns
+    const tableColumn = ["ID", "Name", "Type", "Location", "Date", "Status"];
+    
+    // Define Rows from filtered data
+    const tableRows = filteredApplicants.map(applicant => [
+        applicant.id,
+        applicant.name,
+        applicant.type,
+        applicant.location,
+        applicant.date,
+        applicant.status,
+    ]);
+
+    // Generate Table
+    autoTable(doc, {
+        startY: 40,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: { fillColor: [22, 163, 74] }, // Matches Green-700
+    });
+
+    doc.save(`Applicants_List_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  // --- PRINT FUNCTION (SINGLE) ---
+  const handlePrintApplicant = () => {
+    if (!selectedApplicant) return;
+    handlePrint(); // Direct print trigger
+  };
 
   const locations = [...new Set(applicants.map(a => a.location))];
 
@@ -312,10 +584,9 @@ const filteredApplicants = applicants.filter((a) => {
                   >
                     <option value="">All</option>
                     <option value="Freshmen">Freshmen</option>
-                    <option value="Transferee">Transferees</option>
+                    <option value="Transferees">Transferees</option>
                   </select>
 
-                  {/* Added Location Filter */}
                   <label className="block text-xs font-semibold mb-1 uppercase tracking-tight">Location</label>
                   <select
                     value={locationFilter}
@@ -328,18 +599,6 @@ const filteredApplicants = applicants.filter((a) => {
                     ))}
                   </select>
 
-				<label className="block text-xs font-semibold mb-1 uppercase tracking-tight">Status</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full mb-3 p-2 border rounded text-sm outline-none"
-                  >
-                    <option value="">All</option>
-                    <option value="Passed">Passed</option>
-                    <option value="Failed">Failed</option>
-                    <option value="Pending">Pending</option> {/* Added this option */}
-                  </select>
-
                   <div className="flex justify-between">
                     <button onClick={() => setShowFilter(false)} className="px-3 py-1 bg-green-700 text-white rounded text-xs font-bold">Apply</button>
                     <button onClick={() => { setTypeFilter(""); setLocationFilter(""); setStatusFilter(""); setSearchQuery(""); }} className="px-3 py-1 bg-gray-100 rounded text-xs font-bold">Clear</button>
@@ -348,13 +607,24 @@ const filteredApplicants = applicants.filter((a) => {
               )}
             </div>
 
-            {/* ADD APPLICANT BUTTON */}
-            <button 
-                onClick={() => setIsAddModalOpen(true)}
-                className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase flex items-center gap-2 hover:bg-green-800 transition-all shadow-md active:scale-95 ml-auto"
-            >
-                <FaPlus /> Add Applicant
-            </button>
+            {/* ACTION BUTTONS WRAPPER */}
+            <div className="ml-auto flex gap-3">
+                {/* EXPORT ALL BUTTON */}
+                <button 
+                    onClick={handleExportPDF}
+                    className="bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase flex items-center gap-2 hover:bg-blue-800 transition-all shadow-md active:scale-95"
+                >
+                    <FaFileExport size={14} /> Export All
+                </button>
+
+                {/* ADD APPLICANT BUTTON */}
+                <button 
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase flex items-center gap-2 hover:bg-green-800 transition-all shadow-md active:scale-95"
+                >
+                    <FaPlus /> Add Applicant
+                </button>
+            </div>
           </div>
         </div>
 
@@ -374,30 +644,27 @@ const filteredApplicants = applicants.filter((a) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                    <tr><td colSpan="7" className="p-8 text-center text-gray-500">Loading Applicants...</td></tr>
-                ) : filteredApplicants.map((a) => (
+                {filteredApplicants.map((a) => (
                   <tr key={a.id} className="hover:bg-gray-50 transition-colors">
-                    {/* SAFE ID CHECK TO PREVENT SUBSTRING CRASH */}
-                    <td className="py-2 pl-6 text-sm text-gray-500 font-medium">
-                        {(a.id || "").toString().length > 8 ? (a.id || "").toString().substring(0, 8) + '...' : (a.id || "N/A")}
-                    </td>
+                    <td className="py-2 pl-6 text-sm text-gray-500 font-medium">{a.id}</td>
                     <td className="px-7 py-2 text-sm text-gray-900 font-medium">{a.name}</td>
                     <td className="px-4 py-2 text-sm uppercase text-gray-600">{a.type}</td>
                     <td className="px-4 py-2 text-sm uppercase text-gray-600">{a.location}</td> 
                     <td className="px-4 py-2 text-sm text-gray-600 text-center">{a.date}</td>
                     
-                    <td className="px-4 py-2 text-center">
-                      <span className={`px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border ${
-                        a.status === "Passed"
-                          ? "bg-green-100 text-green-700 border-green-200"
-                          : a.status === "Failed"
-                          ? "bg-red-100 text-red-700 border-red-200"
-                          : "bg-yellow-100 text-yellow-700 border-yellow-200"
-                      }`}>
-                        {a.status}
-                      </span>
-                    </td>
+					<td className="px-4 py-2 text-center">
+                          <span className={`px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border ${
+                            (a.status === "Admitted" || a.status.includes("Passed"))
+                              ? "bg-green-100 text-green-700 border-green-200"
+                              :
+                              (a.status.includes("Pending"))
+                                ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                                :
+                                  "bg-red-100 text-red-700 border-red-200"
+                          }`}>
+                            {a.status}
+                          </span>
+                        </td>
 
                     <td className="px-4 py-2 text-center pr-6">
                       <button 
@@ -410,7 +677,7 @@ const filteredApplicants = applicants.filter((a) => {
                   </tr>
                 ))}
                 
-                {!loading && filteredApplicants.length === 0 && (
+                {filteredApplicants.length === 0 && (
                   <tr>
                     <td colSpan="7" className="p-8 text-center text-gray-400 italic">No applicants found</td>
                   </tr>
@@ -421,19 +688,18 @@ const filteredApplicants = applicants.filter((a) => {
         </div>
       </main>
 
-      {/* --- ADD APPLICANT MODAL --- */}
+      {/* --- ADD APPLICANT MODAL (Hidden for brevity, assume same structure as previous) --- */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-6">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsAddModalOpen(false)}></div>
           <div className="relative bg-white rounded-2xl shadow-lg w-11/12 max-w-[1200px] z-10 flex flex-col max-h-[90vh] overflow-hidden">
-            {/* ... Add Applicant Form Content (Same as previous) ... */}
+            
             <div className="flex items-center justify-between rounded-t-2xl bg-green-700 text-white px-6 py-4 shrink-0">
               <h3 className="font-bold text-lg uppercase">Add New Applicant</h3>
               <button className="text-white text-3xl font-bold" onClick={() => setIsAddModalOpen(false)}>&times;</button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto space-y-6 bg-gray-100">
-               {/* ADD FORM FIELDS (Collapsed for brevity - unchanged) */}
                {/* PERSONAL INFORMATION */}
               <div className="bg-white rounded-xl border border-gray-300 p-5 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
@@ -484,7 +750,7 @@ const filteredApplicants = applicants.filter((a) => {
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Gender</label>
                         <select className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.personal.gender} onChange={(e) => handleInputChange('personal', 'gender', e.target.value)}>
-                            <option value="MALE">SELECT GENDER</option>
+                            <option value="SELECT GENDER">SELECT GENDER</option>
                             <option value="MALE">MALE</option>
                             <option value="FEMALE">FEMALE</option>
                         </select>
@@ -493,14 +759,23 @@ const filteredApplicants = applicants.filter((a) => {
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Civil Status</label>
                         <select className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.personal.civilStatus} onChange={(e) => handleInputChange('personal', 'civilStatus', e.target.value)}>
-                            <option value="SINGLE">SELECT STATUS</option>
+                            <option value="SELECT STATUS">SELECT STATUS</option>
                             <option value="SINGLE">SINGLE</option>
                             <option value="MARRIED">MARRIED</option>
                             <option value="SEPARATED">SEPARATED</option>
                             <option value="WIDOWED">WIDOWED</option>
-                            
                         </select>
                     </div>
+                    <div>
+                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Nationality</label>
+                        <input type="text" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
+                            value={newApplicant.profile.personal.nationality} onChange={(e) => handleInputChange('personal', 'nationality', e.target.value)} />
+                    </div>        
+                    <div>
+                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Religion</label>
+                        <input type="text" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
+                            value={newApplicant.profile.personal.religion} onChange={(e) => handleInputChange('personal', 'religion', e.target.value)} />
+                    </div>                        
                     <div>
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Email Address</label>
                         <input type="email" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm h-8 outline-none focus:border-green-600" 
@@ -511,7 +786,7 @@ const filteredApplicants = applicants.filter((a) => {
                         <input type="text" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.personal.contact} onChange={(e) => handleInputChange('personal', 'contact', e.target.value)} />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-4">
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Residential Address</label>
                         <input type="text" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.personal.address} onChange={(e) => handleInputChange('personal', 'address', e.target.value)} />
@@ -576,7 +851,7 @@ const filteredApplicants = applicants.filter((a) => {
 
                   <div>
                       <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Number of Siblings</label>
-                      <input type="text" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
+                      <input type="number" className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                           value={newApplicant.profile.family.siblings} onChange={(e) => handleInputChange('family', 'siblings', e.target.value)} />
                   </div>
                   <div className="md:col-span-2">
@@ -589,7 +864,7 @@ const filteredApplicants = applicants.filter((a) => {
 
               {/* EDUCATION */}
               <div className="bg-white rounded-xl border border-gray-300 p-5 shadow-sm">
-                <div className="text-sm font-black text-green-700 mb-4 uppercase">Education Profile</div>
+                <div className="text-sm font-black text-green-700 mb-4 uppercase">Education Information</div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-2 border-b border-gray-100">
                     <div className="md:col-span-2">
@@ -619,8 +894,8 @@ const filteredApplicants = applicants.filter((a) => {
                     <div>
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Type</label>
                         <select className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
-                            value={newApplicant.profile.education.elemType} onChange={(e) => handleInputChange('education', 'elemType', e.target.value)}>
-                            <option value="MALE">SELECT TYPE</option>
+                            value={newApplicant.profile.education.elemType} onChange={(e) => handleInputChange('education', 'elemType', e.target.value)}>      
+                            <option value="SELECT TYPE">SELECT TYPE</option>
                             <option value="PUBLIC">PUBLIC</option>
                             <option value="PRIVATE">PRIVATE</option>
                         </select>
@@ -648,7 +923,7 @@ const filteredApplicants = applicants.filter((a) => {
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Type</label>
                         <select className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.education.jhsType} onChange={(e) => handleInputChange('education', 'jhsType', e.target.value)}>
-                            <option value="MALE">SELECT TYPE</option>
+                            <option value="SELECT TYPE">SELECT TYPE</option>
                             <option value="PUBLIC">PUBLIC</option>
                             <option value="PRIVATE">PRIVATE</option>
                         </select>
@@ -676,7 +951,7 @@ const filteredApplicants = applicants.filter((a) => {
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Type</label>
                         <select className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.education.shsType} onChange={(e) => handleInputChange('education', 'shsType', e.target.value)}>
-                            <option value="MALE">SELECT TYPE</option>
+                            <option value="SELECT TYPE">SELECT TYPE</option>
                             <option value="PUBLIC">PUBLIC</option>
                             <option value="PRIVATE">PRIVATE</option>
                         </select>
@@ -705,7 +980,7 @@ const filteredApplicants = applicants.filter((a) => {
                         <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">Type</label>
                         <select className="w-full bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 outline-none focus:border-green-600" 
                             value={newApplicant.profile.education.lastSchoolType} onChange={(e) => handleInputChange('education', 'lastSchoolType', e.target.value)}>
-                            <option value="MALE">SELECT TYPE</option>
+                            <option value="SELECT TYPE">SELECT TYPE</option>
                             <option value="PUBLIC">PUBLIC</option>
                             <option value="PRIVATE">PRIVATE</option>
                         </select>
@@ -718,7 +993,7 @@ const filteredApplicants = applicants.filter((a) => {
               {/* --- ASSESSMENT RESULTS INPUT SECTION --- */}
               <div className="bg-white rounded-xl p-6 shadow-md relative overflow-hidden">
                 <div className="text-sm font-black text-green-700 mb-4 uppercase">Assessment Results</div>
-              
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Interview Result */}
                     <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
@@ -826,9 +1101,11 @@ const filteredApplicants = applicants.filter((a) => {
                     <DataBox label="Place of Birth" value={selectedApplicant.profile.personal.pob} />
                     <DataBox label="Gender" value={selectedApplicant.profile.personal.gender} />
                     <DataBox label="Civil Status" value={selectedApplicant.profile.personal.civilStatus} />
+                    <DataBox label="Nationality" value={selectedApplicant.profile.personal.nationality} />       
+                    <DataBox label="Religion" value={selectedApplicant.profile.personal.religion} />                      
                     <DataBox label="Email Address" value={selectedApplicant.profile.personal.email} />
                     <DataBox label="Contact Number" value={selectedApplicant.profile.personal.contact} />
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-4">
                       <DataBox label="Residential Address" value={selectedApplicant.profile.personal.address} />
                     </div>
                   </div>
@@ -857,7 +1134,7 @@ const filteredApplicants = applicants.filter((a) => {
 
               {/* EDUCATION PROFILE */}
               <div className="bg-white rounded-xl border border-gray-300 p-5 shadow-sm">
-                <div className="text-sm font-black text-green-700 mb-4 uppercase">Education Profile</div>
+                <div className="text-sm font-black text-green-700 mb-4 uppercase">Education Information</div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-2 border-b border-gray-100">
                     <div className="md:col-span-2">
@@ -881,7 +1158,7 @@ const filteredApplicants = applicants.filter((a) => {
                     </div>
                   ))}
 
-                  {selectedApplicant.type === "Transferees" && (
+                  {selectedApplicant.type === "Transferee" && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
                       <DataBox label="Last School Attended" value={selectedApplicant.profile.education.lastSchool} />
                       <DataBox label="Address" value={selectedApplicant.profile.education.lastSchoolAddr} />
@@ -914,13 +1191,10 @@ const filteredApplicants = applicants.filter((a) => {
                         className="ml-2 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors"
                         title="View Document"
                       >
-                         <FaEye size={14} />
+                          <FaEye size={14} />
                       </button>
                     </div>
                   ))}
-                  {(!selectedApplicant.profile.documents || selectedApplicant.profile.documents.length === 0) && (
-                      <p className="text-sm text-gray-400 italic">No documents submitted.</p>
-                  )}
                 </div>
               </div> 
 
@@ -967,12 +1241,24 @@ const filteredApplicants = applicants.filter((a) => {
 
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-400 rounded-b-2xl shrink-0 flex justify-end">
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-400 rounded-b-2xl shrink-0 flex justify-end gap-3">
+              <button 
+                onClick={handlePrintApplicant}
+                className="px-6 py-2 rounded-lg bg-blue-700 text-white font-bold uppercase text-xs hover:bg-blue-800 flex items-center gap-2"
+              >
+                 <FaPrint /> Print 
+              </button>
+              
               <button className="px-8 py-2 rounded-lg bg-gray-900 text-white font-bold uppercase text-xs" onClick={() => setIsModalOpen(false)}>Close</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* --- HIDDEN PRINT TEMPLATE --- */}
+      <div style={{ overflow: "hidden", height: "0", width: "0" }}>
+         <AdmissionFormTemplate ref={printRef} applicant={selectedApplicant} />
+      </div>
 
       {/* --- DOCUMENT PREVIEW MODAL --- */}
       {previewDoc && (
@@ -989,16 +1275,16 @@ const filteredApplicants = applicants.filter((a) => {
 
                         {/* ZOOM CONTROLS (Only for Images) */}
                         {['png', 'jpg', 'jpeg'].includes(previewDoc.format.toLowerCase()) && (
-                           <div className="flex items-center gap-2 bg-green-700 rounded-lg p-1 ml-6 shadow-inner border">
-                              <button onClick={handleZoomOut} className="p-2 hover:bg-gray-700 rounded-md text-gray-300 hover:text-white transition-colors active:scale-95" title="Zoom Out">
+                           <div className="flex items-center gap-2 bg-green-700 rounded-lg p-1 ml-6 shadow-inner border border-green-600">
+                              <button onClick={handleZoomOut} className="p-2 hover:bg-green-800 rounded-md text-gray-100 hover:text-white transition-colors active:scale-95" title="Zoom Out">
                                 <FaSearchMinus size={14} />
                               </button>
-                              <span className="text-xs font-bold w-12 text-center select-none text-gray-200">{Math.round(zoomLevel * 100)}%</span>
-                              <button onClick={handleZoomIn} className="p-2 hover:bg-gray-700 rounded-md text-gray-300 hover:text-white transition-colors active:scale-95" title="Zoom In">
+                              <span className="text-xs font-bold w-12 text-center select-none text-gray-100">{Math.round(zoomLevel * 100)}%</span>
+                              <button onClick={handleZoomIn} className="p-2 hover:bg-green-800 rounded-md text-gray-100 hover:text-white transition-colors active:scale-95" title="Zoom In">
                                 <FaSearchPlus size={14} />
                               </button>
-                              <div className="w-px h-4 bg-gray-600 mx-1"></div>
-                              <button onClick={handleResetZoom} className="p-2 hover:bg-gray-700 rounded-md text-gray-300 hover:text-white transition-colors active:scale-95" title="Reset Zoom">
+                              <div className="w-px h-4 bg-green-500 mx-1"></div>
+                              <button onClick={handleResetZoom} className="p-2 hover:bg-green-800 rounded-md text-gray-100 hover:text-white transition-colors active:scale-95" title="Reset Zoom">
                                 <FaRedo size={12} />
                               </button>
                            </div>
@@ -1015,6 +1301,7 @@ const filteredApplicants = applicants.filter((a) => {
 
                 {/* File Viewer Container */}
                 <div className="flex-1 bg-gray-100 overflow-auto flex items-start justify-center relative p-4 scroll-smooth">
+                    {/* Inner wrapper ensures min-height for vertical centering when image is smaller than viewport */}
                     <div className="min-h-full min-w-full flex items-center justify-center">
                         {previewDoc.format.toLowerCase() === 'pdf' ? (
                             <iframe 
@@ -1023,6 +1310,7 @@ const filteredApplicants = applicants.filter((a) => {
                                 title="Document Preview"
                             />
                         ) : ['png', 'jpg', 'jpeg'].includes(previewDoc.format.toLowerCase()) ? (
+                            // WIDTH-BASED ZOOMING (Fixes Clipping/Overlap)
                             <img 
                                 src={previewDoc.url} 
                                 alt="Preview" 

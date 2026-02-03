@@ -514,22 +514,18 @@ Welcome to BTECH!`;
                         {/* Date */}
                         <td className="px-4 py-3 text-sm text-gray-600 text-center">{a.date}</td>
                         
-                        {/* Status with new Badge Style */}
-                        <td className="px-4 py-3 text-center">
-                        <span className={`px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border ${
-                            a.status === "Pending Interview" 
-                            ? "bg-yellow-100 text-yellow-700 border-yellow-200" 
-                            : a.status === "Pending BCET" 
-                            ? "bg-blue-100 text-blue-700 border-blue-200"
-                            : a.status === "Passed BCET" || a.status === "Admitted"
-                            ? "bg-green-100 text-green-700 border-green-200"
-                            : "bg-red-100 text-red-700 border-red-200"
-                        }`}>
-                            {a.status}
-                        </span>
-                        </td>
-                        
-                        {/* Action with Tooltips */}
+						{/* Status with new Badge Style */}
+						<td className="px-4 py-3 text-center">
+							<span className={`px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border ${
+								(a.status === "Admitted" || a.status.includes("Passed"))
+									? "bg-green-100 text-green-700 border-green-200"
+									: (a.status.includes("Pending"))
+										? "bg-yellow-100 text-yellow-700 border-yellow-200"
+										: "bg-red-100 text-red-700 border-red-200"
+							}`}>
+								{a.status}
+							</span>
+						</td>
                         <td className="px-4 py-2 text-center pr-6">
                         <div className="flex justify-center gap-6">
                             

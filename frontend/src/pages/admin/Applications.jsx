@@ -44,13 +44,11 @@ export default function Applications() {
 
   useEffect(() => {
     if (location.state?.applicantId) {
-      if (applicants.length > 0) {
-        const target = applicants.find(a => a.id === location.state.applicantId);
-        if (target) {
-          setSelectedApplicant(target);
-          setIsModalOpen(true);
-          navigate(location.pathname, { replace: true, state: {} });
-        }
+      const target = applicants.find(a => a.id === location.state.applicantId);
+      if (target) {
+        setSelectedApplicant(target);
+        setIsModalOpen(true);
+        navigate(location.pathname, { replace: true, state: {} });
       }
     }
   }, [location.state, applicants, navigate, location.pathname]);
@@ -80,7 +78,7 @@ export default function Applications() {
     <div>
       <div className="text-[11px] font-bold text-gray-700 uppercase">{label}</div>
       <div className="mt-1 bg-white border border-gray-400 rounded-lg px-2 py-1 text-sm uppercase h-8 flex items-center shadow-sm truncate">
-        {value || "N/A"}
+        {value || ""}
       </div>
     </div>
   );
@@ -149,32 +147,37 @@ export default function Applications() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {loading ? (
-                    <tr><td colSpan="7" className="p-8 text-center text-gray-500 font-bold">Loading Applications...</td></tr>
-                ) : filteredApplicants.length > 0 ? (
-                    filteredApplicants.map((a) => (
-                    <tr key={a.id} className="hover:bg-gray-50 transition-colors">
-                        <td className=" py-2  pl-6 text-sm text-gray-500 font-medium">{a.id}</td>
-                        <td className="px-7 py-2 text-sm text-gray-900 font-medium">{a.name}</td>
-                        <td className="px-4 py-2  text-sm uppercase text-gray-600">{a.type}</td>
-                        <td className="px-4 py-2  text-sm uppercase text-gray-600">{a.location}</td>
-                        <td className="px-4 py-2  text-sm text-gray-600 text-center">{a.date}</td>
-                        <td className="px-4 py-2  text-center">
-                        <span className="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border border-yellow-200">
-                            {a.status === "Pending" ? "Pending Interview" : a.status}
-                        </span>
-                        </td>
-                        <td className="px-4 py-2 text-center pr-6">
-                        <button 
-                            onClick={() => { setSelectedApplicant(a); setIsModalOpen(true); }} 
-                            className="text-blue-600 border border-blue-200 bg-white hover:bg-blue-50 px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm"
-                        >
-                            View Details
-                        </button>
-                        </td>
-                    </tr>
-                    ))
-                ) : (
+                {filteredApplicants.map((a) => (
+                  <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+                    <td className=" py-2  pl-6 text-sm text-gray-500 font-medium">{a.id}</td>
+                    <td className="px-7 py-2 text-sm text-gray-900 font-medium">{a.name}</td>
+                    <td className="px-4 py-2  text-sm uppercase text-gray-600">{a.type}</td>
+                    <td className="px-4 py-2  text-sm uppercase text-gray-600">{a.location}</td>
+                    <td className="px-4 py-2  text-sm text-gray-600 text-center">{a.date}</td>
+					<td className="px-4 py-2 text-center">
+                      <span className={`px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border ${
+                        (a.status === "Admitted" || a.status.includes("Passed"))
+                          ? "bg-green-100 text-green-700 border-green-200"
+                          :
+                          (a.status.includes("Pending"))
+                            ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                            :
+                              "bg-red-100 text-red-700 border-red-200"
+                      }`}>
+                        {a.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-center pr-6">
+                      <button z
+                        onClick={() => { setSelectedApplicant(a); setIsModalOpen(true); }} 
+                        className="text-blue-600 border border-blue-200 bg-white hover:bg-blue-50 px-4 py-2 rounded text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredApplicants.length === 0 && (
                   <tr>
                     <td colSpan="7" className="p-8 text-center text-gray-400 italic">No applicants found</td>
                   </tr>
@@ -204,7 +207,7 @@ export default function Applications() {
                   <div className="shrink-0">
                     <div className="text-[11px] font-bold text-gray-700 uppercase mb-1">Applicant Picture</div>
                     <div className="w-32 h-32 md:w-40 md:h-40 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center overflow-hidden relative">
-                      {selectedApplicant.profile.personal?.image ? (
+                      {selectedApplicant.profile.personal.image ? (
                         <img 
                           src={selectedApplicant.profile.personal.image} 
                           alt="Profile" 
@@ -222,18 +225,20 @@ export default function Applications() {
                   </div>
 
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <DataBox label="First Name" value={selectedApplicant.profile.personal?.firstName} />
-                    <DataBox label="Middle Name" value={selectedApplicant.profile.personal?.middleName} />
-                    <DataBox label="Surname" value={selectedApplicant.profile.personal?.surname} />
-                    <DataBox label="Suffix" value={selectedApplicant.profile.personal?.suffix} />
-                    <DataBox label="Date of Birth" value={selectedApplicant.profile.personal?.dob} />
-                    <DataBox label="Place of Birth" value={selectedApplicant.profile.personal?.pob} />
-                    <DataBox label="Gender" value={selectedApplicant.profile.personal?.gender} />
-                    <DataBox label="Civil Status" value={selectedApplicant.profile.personal?.civilStatus} />
-                    <DataBox label="Email Address" value={selectedApplicant.profile.personal?.email} />
-                    <DataBox label="Contact Number" value={selectedApplicant.profile.personal?.contact} />
-                    <div className="lg:col-span-2">
-                      <DataBox label="Residential Address" value={selectedApplicant.profile.personal?.address} />
+                    <DataBox label="First Name" value={selectedApplicant.profile.personal.firstName} />
+                    <DataBox label="Middle Name" value={selectedApplicant.profile.personal.middleName} />
+                    <DataBox label="Surname" value={selectedApplicant.profile.personal.surname} />
+                    <DataBox label="Suffix" value={selectedApplicant.profile.personal.suffix} />
+                    <DataBox label="Date of Birth" value={selectedApplicant.profile.personal.dob} />
+                    <DataBox label="Place of Birth" value={selectedApplicant.profile.personal.pob} />
+                    <DataBox label="Gender" value={selectedApplicant.profile.personal.gender} />
+                    <DataBox label="Civil Status" value={selectedApplicant.profile.personal.civilStatus} />
+                    <DataBox label="Nationality" value={selectedApplicant.profile.personal.nationality} />
+                    <DataBox label="Religion" value={selectedApplicant.profile.personal.religion} />                   
+                    <DataBox label="Email Address" value={selectedApplicant.profile.personal.email} />
+                    <DataBox label="Contact Number" value={selectedApplicant.profile.personal.contact} />
+                    <div className="md:col-span-4">
+                      <DataBox label="Residential Address" value={selectedApplicant.profile.personal.address} />
                     </div>
                   </div>
                 </div>
@@ -243,31 +248,31 @@ export default function Applications() {
               <div className="bg-white rounded-xl border border-gray-300 p-5 shadow-sm">
                 <div className="text-sm font-black text-green-700 mb-4 uppercase">Family Information</div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <DataBox label="Father's Name" value={selectedApplicant.profile.family?.fatherName} />
-                  <DataBox label="Occupation" value={selectedApplicant.profile.family?.fatherOcc} />
-                  <DataBox label="Contact" value={selectedApplicant.profile.family?.fatherContact} />
-                  <DataBox label="Mother's Name" value={selectedApplicant.profile.family?.motherName} />
-                  <DataBox label="Occupation" value={selectedApplicant.profile.family?.motherOcc} />
-                  <DataBox label="Contact" value={selectedApplicant.profile.family?.motherContact} />
-                  <DataBox label="Guardian's Name" value={selectedApplicant.profile.family?.guardianName} />
-                  <DataBox label="Occupation" value={selectedApplicant.profile.family?.guardianOcc} />
-                  <DataBox label="Contact" value={selectedApplicant.profile.family?.guardianContact} />
-                  <DataBox label="Number of Siblings" value={selectedApplicant.profile.family?.siblings} />
+                  <DataBox label="Father's Name" value={selectedApplicant.profile.family.fatherName} />
+                  <DataBox label="Occupation" value={selectedApplicant.profile.family.fatherOcc} />
+                  <DataBox label="Contact" value={selectedApplicant.profile.family.fatherContact} />
+                  <DataBox label="Mother's Name" value={selectedApplicant.profile.family.motherName} />
+                  <DataBox label="Occupation" value={selectedApplicant.profile.family.motherOcc} />
+                  <DataBox label="Contact" value={selectedApplicant.profile.family.motherContact} />
+                  <DataBox label="Guardian's Name" value={selectedApplicant.profile.family.guardianName} />
+                  <DataBox label="Occupation" value={selectedApplicant.profile.family.guardianOcc} />
+                  <DataBox label="Contact" value={selectedApplicant.profile.family.guardianContact} />
+                  <DataBox label="Number of Siblings" value={selectedApplicant.profile.family.siblings} />
                   <div className="md:col-span-2">
-                    <DataBox label="Monthly Family Income" value={selectedApplicant.profile.family?.income} />
+                    <DataBox label="Monthly Family Income" value={selectedApplicant.profile.family.income} />
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl border border-gray-300 p-5 shadow-sm">
-                <div className="text-sm font-black text-green-700 mb-4 uppercase">Education Profile</div>
+                <div className="text-sm font-black text-green-700 mb-4 uppercase">Education Information</div>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-2 border-b border-gray-100">
                     <div className="md:col-span-2">
-                      <DataBox label="LRN/ Student Number" value={selectedApplicant.profile.education?.lrn} />
+                      <DataBox label="LRN/ Student Number" value={selectedApplicant.profile.education.lrn} />
                     </div>
                     <div className="md:col-span-2">
-                      <DataBox label="General Weighted Average (GWA)" value={selectedApplicant.profile.education?.gwa} />
+                      <DataBox label="General Weighted Average (GWA)" value={selectedApplicant.profile.education.gwa} />
                     </div>
                   </div>
                   {[ 
@@ -276,17 +281,17 @@ export default function Applications() {
                     {l: "Senior High", k: "shs", a: "shsAddr", t: "shsType", y: "shsYear"}
                   ].map(row => (
                     <div key={row.k} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <DataBox label={row.l} value={selectedApplicant.profile.education?.[row.k]} />
-                      <DataBox label="Address" value={selectedApplicant.profile.education?.[row.a]} />
-                      <DataBox label="Type" value={selectedApplicant.profile.education?.[row.t]} />
-                      <DataBox label="Year Graduated" value={selectedApplicant.profile.education?.[row.y]} />
+                      <DataBox label={row.l} value={selectedApplicant.profile.education[row.k]} />
+                      <DataBox label="Address" value={selectedApplicant.profile.education[row.a]} />
+                      <DataBox label="Type" value={selectedApplicant.profile.education[row.t]} />
+                      <DataBox label="Year Graduated" value={selectedApplicant.profile.education[row.y]} />
                     </div>
                   ))}
                    {selectedApplicant.type === "Transferees" && (
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-gray-100">
-                      <DataBox label="Last School Attended" value={selectedApplicant.profile.education?.lastSchool} />
-                      <DataBox label="Address" value={selectedApplicant.profile.education?.lastSchoolAddr} />
-                      <DataBox label="Type" value={selectedApplicant.profile.education?.lastSchoolType} />
+                      <DataBox label="Last School Attended" value={selectedApplicant.profile.education.lastSchool} />
+                      <DataBox label="Address" value={selectedApplicant.profile.education.lastSchoolAddr} />
+                      <DataBox label="Type" value={selectedApplicant.profile.education.lastSchoolType} />
                     </div>
                   )}
                 </div>
@@ -318,9 +323,6 @@ export default function Applications() {
                       </button>
                     </div>
                   ))}
-                  {(!selectedApplicant.profile.documents || selectedApplicant.profile.documents.length === 0) && (
-                      <div className="text-gray-400 text-xs italic">No documents submitted.</div>
-                  )}
                 </div>
               </div> 
                          
@@ -351,12 +353,12 @@ export default function Applications() {
                 <div className="bg-green-700 text-white px-6 py-4 flex justify-between items-center shrink-0 z-10 relative shadow-md">
                     <div className="flex items-center gap-4">
                         <div>
-                            <h3 className="font-bold text-lg uppercase tracking-wider">{previewDoc.name || "Document"}</h3>
-                            <p className="text-xs text-gray-400 uppercase">{previewDoc.format || previewDoc.type} File Preview</p>
+                            <h3 className="font-bold text-lg uppercase tracking-wider">{previewDoc.name}</h3>
+                            <p className="text-xs text-gray-400 uppercase">{previewDoc.format} File Preview</p>
                         </div>
 
                         {/* ZOOM CONTROLS  */}
-                        {['png', 'jpg', 'jpeg' ].includes((previewDoc.format || previewDoc.type || '').toLowerCase()) && (
+                        {['png', 'jpg', 'jpeg' ].includes(previewDoc.format.toLowerCase()) && (
                            <div className="flex items-center gap-2 bg-green-700 rounded-lg p-1 ml-6 shadow-inner border ">
                               <button onClick={handleZoomOut} className="p-2 hover:bg-gray-700 rounded-md text-gray-300 hover:text-white transition-colors active:scale-95" title="Zoom Out">
                                 <FaSearchMinus size={14} />
@@ -385,13 +387,13 @@ export default function Applications() {
                 <div className="flex-1 bg-gray-100 overflow-auto flex items-start justify-center relative p-4 scroll-smooth">
                     {/* Inner wrapper ensures min-height for vertical centering when image is smaller than viewport */}
                     <div className="min-h-full min-w-full flex items-center justify-center">
-                        {(previewDoc.format || previewDoc.type || '').toLowerCase() === 'pdf' ? (
+                        {previewDoc.format.toLowerCase() === 'pdf' ? (
                             <iframe 
                                 src={previewDoc.url} 
                                 className="w-full h-full rounded-lg shadow-lg bg-white" 
                                 title="Document Preview"
                             />
-                        ) : ['png', 'jpg', 'jpeg'].includes((previewDoc.format || previewDoc.type || '').toLowerCase()) ? (
+                        ) : ['png', 'jpg', 'jpeg'].includes(previewDoc.format.toLowerCase()) ? (
                             // WIDTH-BASED ZOOMING (Fixes Clipping/Overlap)
                             <img 
                                 src={previewDoc.url} 
