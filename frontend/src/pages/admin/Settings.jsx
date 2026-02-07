@@ -419,7 +419,6 @@ COMMIT;
                    Save Preferences
                  </button>
               </div>
-
             </div>
           )}
 
