@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { FaCog } from "react-icons/fa";
+import api from "../services/api"; // Import your API service
 
 // --- MOCK DATA FOR NOTIFICATIONS ---
 const MOCK_NOTIFICATIONS = [
@@ -18,11 +19,34 @@ export default function Header({ username = "admin" }) {
   // State for Notification Popup
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+
+  // State for Admin Profile Image
+  const [profileImage, setProfileImage] = useState(null);
   
   // --- STATE FOR TABS (All vs Unread) ---
   const [activeTab, setActiveTab] = useState("all"); 
 
   const notifRef = useRef(null); 
+
+  // --- FETCH ADMIN PROFILE IMAGE ON MOUNT ---
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      try {
+        const res = await api.get('/admin/profile');
+        if (res.data.image) {
+           // Ensure URL is complete
+           const imgUrl = res.data.image.startsWith('http') 
+             ? res.data.image 
+             : `http://localhost:5000${res.data.image}`;
+           setProfileImage(imgUrl);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile image for header", error);
+        // Fail silently and stick to default icon
+      }
+    };
+    fetchProfileImage();
+  }, []); // Run once on mount
 
   const handleLogoutClick = () => setShowLogoutModal(true);
   
@@ -208,13 +232,21 @@ export default function Header({ username = "admin" }) {
                 </div>
               )}
               
-              {/* PROFILE */}
+              {/* PROFILE LINK */}
               <Link 
                 to="/admin_profile" 
-                className={`h-10 w-10 rounded-full border-2 border-white flex items-center justify-center transition-all duration-200 ${getIconClass('/admin_profile')}`}
+                className={`h-10 w-10 rounded-full border-2 border-white flex items-center justify-center overflow-hidden transition-all duration-200 ${getIconClass('/admin_profile')}`}
                 title="View Profile"
               >
-                <i className="fa-solid fa-user text-lg"></i>
+                {profileImage ? (
+                  <img 
+                    src={profileImage} 
+                    alt="Admin" 
+                    className="h-full w-full object-cover" 
+                  />
+                ) : (
+                  <i className="fa-solid fa-user text-lg"></i>
+                )}
               </Link>
 
               {/* LOGOUT */}
