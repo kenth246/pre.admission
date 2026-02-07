@@ -6,7 +6,7 @@ const systemSettingsSchema = new mongoose.Schema({
     instituteName: { type: String, default: "Institute of Information Technology and Innovation" },
     admissionOpen: { type: Boolean, default: true },
     academicYear: { type: String, default: "2025-2026" },
-    applicationDeadline: { type: String }, // Stores date string YYYY-MM-DD
+    applicationDeadline: { type: String, default: "2026-04-15" }, // Stores date string YYYY-MM-DD
     security: {
         twoFactorAuth: { type: Boolean, default: false }
     },

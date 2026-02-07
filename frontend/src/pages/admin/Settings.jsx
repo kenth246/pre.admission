@@ -34,16 +34,16 @@ export default function Settings() {
   const [academicYears, setAcademicYears] = useState([]);
 
   // --- State for Data ---
-  const defaultSettings = {
-    systemName: "BTECH - IITI Pre-Admission System",
-    schoolName: "Baliwag Polytechnic College (BTECH)",
-    instituteName: "Institute of Information Technology and Innovation",
+  // Initial empty state, will be populated from backend
+  const [settings, setSettings] = useState({
+    systemName: "",
+    schoolName: "",
+    instituteName: "",
     admissionOpen: true,
-    academicYear: "2025-2026",
-    applicationDeadline: "2026-04-15",
-  };
+    academicYear: "",
+    applicationDeadline: "",
+  });
 
-  const [settings, setSettings] = useState(defaultSettings);
   const [securitySettings, setSecuritySettings] = useState({ twoFactorAuth: false });
 
   // --- NEW: Notification State ---
@@ -56,19 +56,60 @@ export default function Settings() {
     autoReply: true         // Send auto-acknowledgment to students
   });
   
-  // Dummy Logs
-  const [activityLogs, setActivityLogs] = useState([
-    { id: 1, user: "System", action: "System initialized", timestamp: new Date().toLocaleString(), status: "Success" },
-    { id: 2, user: "Admin", action: "Updated School Name", timestamp: new Date().toLocaleString(), status: "Success" },
-  ]);
+  const [activityLogs, setActivityLogs] = useState([]);
 
+  // --- FETCH DATA ON LOAD ---
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // 1. Fetch System Settings
+        const settingsRes = await api.get('/admin/settings');
+        const data = settingsRes.data;
+        
+        // Merge backend data with defaults if fields are missing
+        setSettings({
+          systemName: data.systemName || "BTECH - IITI Pre-Admission System",
+          schoolName: data.schoolName || "Baliwag Polytechnic College (BTECH)",
+          instituteName: data.instituteName || "Institute of Information Technology and Innovation",
+          admissionOpen: data.admissionOpen !== undefined ? data.admissionOpen : true,
+          academicYear: data.academicYear || "2025-2026",
+          applicationDeadline: data.applicationDeadline || "2026-04-15"
+        });
+
+        if (data.security) setSecuritySettings(data.security);
+        if (data.notifications) setNotifSettings(data.notifications);
+
+        // 2. Fetch Activity Logs
+        const logsRes = await api.get('/admin/logs');
+        // Map backend log format to frontend table requirements
+        const formattedLogs = logsRes.data.map(log => ({
+            id: log._id,
+            user: log.user || "System",
+            action: log.action,
+            timestamp: new Date(log.createdAt).toLocaleString(),
+            status: log.status || "Success"
+        }));
+        setActivityLogs(formattedLogs);
+
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+        // Optional: fallback to defaults or show error toast
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Initialize Academic Years Dropdown
     const years = [];
     const currentYear = new Date().getFullYear();
     for (let i = currentYear - 5; i < currentYear + 20; i++) {
       years.push(`${i}-${i + 1}`);
     }
     setAcademicYears(years);
+
+    fetchData();
   }, []);
 
   // --- NEW EFFECT: Handle Navigation from Header ---
@@ -81,6 +122,7 @@ export default function Settings() {
   }, [location]);
 
   // --- Logic Helpers ---
+  // Note: Most logging is now handled by the backend, but this updates local state for immediate feedback
   const logAction = (action, status = "Success", user = "Admin (You)") => {
     const newLog = {
       id: Date.now(),
@@ -94,10 +136,20 @@ export default function Settings() {
 
   // --- Action Handlers ---
 
-  const handleToggleAdmission = () => {
-    const newState = !settings.admissionOpen;
-    setSettings(prev => ({ ...prev, admissionOpen: newState }));
-    logAction(`Changed Admission Status to ${newState ? "OPEN" : "CLOSED"}`);
+  const handleToggleAdmission = async () => {
+    try {
+      const newState = !settings.admissionOpen;
+      setSettings(prev => ({ ...prev, admissionOpen: newState }));
+      
+      // Update Backend
+      await api.put('/admin/settings', { admissionOpen: newState });
+      logAction(`Changed Admission Status to ${newState ? "OPEN" : "CLOSED"}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update admission status.");
+      // Revert state on error
+      setSettings(prev => ({ ...prev, admissionOpen: !prev.admissionOpen }));
+    }
   };
 
   const handleChange = (e) => {
@@ -108,28 +160,52 @@ export default function Settings() {
     setSettings({ ...settings, applicationDeadline: dateString });
   };
 
-  const handleSave = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsEditingProfile(false);
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Send all general settings to backend
+      await api.put('/admin/settings', settings);
+
+      setTimeout(() => {
+        setIsEditingProfile(false);
+        setIsLoading(false);
+        logAction("Updated System Configuration");
+        alert("Settings saved successfully!");
+      }, 500); // Small delay for UI feedback
+    } catch (err) {
+      console.error(err);
       setIsLoading(false);
-      logAction("Updated System Configuration");
-      alert("Settings saved successfully!");
-    }, 800);
+      alert("Failed to save settings.");
+    }
   };
 
-  const handleToggle2FA = () => {
-    const newState = !securitySettings.twoFactorAuth;
-    setSecuritySettings(prev => ({ ...prev, twoFactorAuth: newState }));
-    logAction(`${newState ? "Enabled" : "Disabled"} Two-Factor Authentication`);
+  const handleToggle2FA = async () => {
+    try {
+      const newState = !securitySettings.twoFactorAuth;
+      setSecuritySettings(prev => ({ ...prev, twoFactorAuth: newState }));
+      
+      await api.put('/admin/settings', { security: { twoFactorAuth: newState } });
+      logAction(`${newState ? "Enabled" : "Disabled"} Two-Factor Authentication`);
+    } catch (err) {
+      console.error(err);
+      // Revert
+      setSecuritySettings(prev => ({ ...prev, twoFactorAuth: !prev.twoFactorAuth }));
+    }
   };
 
-  // --- NEW: Notification Toggle Handler ---
-  const handleNotifToggle = (key) => {
-    const newState = !notifSettings[key];
-    setNotifSettings(prev => ({ ...prev, [key]: newState }));
-    // Optional: Log specific changes if needed, or just save quietly
-    // logAction(`Updated Notification Setting: ${key}`); 
+  // --- Notification Toggle Handler ---
+  const handleNotifToggle = async (key) => {
+    try {
+      const newState = !notifSettings[key];
+      const updatedNotifs = { ...notifSettings, [key]: newState };
+      
+      setNotifSettings(updatedNotifs);
+      await api.put('/admin/settings', { notifications: updatedNotifs });
+    } catch (err) {
+      console.error(err);
+      setNotifSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    }
   };
 
   const handleArchive = () => {
@@ -142,11 +218,17 @@ export default function Settings() {
     }, 1500);
   };
 
-  const handleClearLogs = () => {
+  const handleClearLogs = async () => {
     if (activityLogs.length === 0) return;
     const confirm = window.confirm("Are you sure you want to clear all activity logs? This action cannot be undone.");
     if (confirm) {
+      try {
+        await api.delete('/admin/logs');
         setActivityLogs([]);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to clear logs.");
+      }
     }
   };
 
@@ -199,7 +281,14 @@ COMMIT;
        if(doubleCheck === "RESET") {
          setIsLoading(true);
          setTimeout(() => {
-           setSettings(defaultSettings);
+           setSettings({
+            systemName: "BTECH - IITI Pre-Admission System",
+            schoolName: "Baliwag Polytechnic College (BTECH)",
+            instituteName: "Institute of Information Technology and Innovation",
+            admissionOpen: true,
+            academicYear: "2025-2026",
+            applicationDeadline: "2026-04-15",
+           });
            setSecuritySettings({ twoFactorAuth: false });
            setNotifSettings({ emailNewApp: true, emailAssessment: false, emailInterview: true, sysDeadline: true, sysMaintenance: true, autoReply: true });
            setActivityLogs([]);
@@ -393,7 +482,7 @@ COMMIT;
                           <p className="font-bold text-gray-800">BCET Completion</p>
                           <p className="text-xs text-gray-500">Get notified when a student completes the BCET.</p>
                         </div>
-                        <ToggleSwitch checked={notifSettings.emailBCET} onChange={() => handleNotifToggle('emailBCET')} />
+                        <ToggleSwitch checked={notifSettings.emailAssessment} onChange={() => handleNotifToggle('emailAssessment')} />
                       </div>
 
                        <hr className="border-gray-200"/>
@@ -419,6 +508,7 @@ COMMIT;
                    Save Preferences
                  </button>
               </div>
+
             </div>
           )}
 
@@ -517,7 +607,7 @@ COMMIT;
                   <div className="border border-gray-200 rounded-xl p-6 bg-white hover:shadow-md transition-shadow">
                     <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mb-4 text-green-600"><Download size={24} /></div>
                     <h3 className="font-bold text-lg text-gray-800 mb-2">Backup Generator</h3>
-                    <p className="text-sm text-gray-600 mb-4 h-12">Generate  copies of the system database.</p>
+                    <p className="text-sm text-gray-600 mb-4 h-12">Generate copies of the system database.</p>
                     
                     <div className="grid grid-cols-2 gap-3">
                       <button 
