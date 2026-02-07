@@ -5,6 +5,9 @@ const bcrypt = require('bcryptjs');
 const { logAudit } = require('../utils/auditLogger');
 // const { validateStatusTransition } = require('../utils/statusTransitions');
 const { sendAdmissionConfirmation } = require('../utils/emailService');
+const { sendEnrollmentInstructions } = require('../utils/emailService');
+const SystemSettings = require('../models/systemSettings');
+const AuditLog = require('../models/auditLog');
 
 // LOGIN 
 exports.login = async(req, res) => {
@@ -131,7 +134,6 @@ exports.getAllApplicants = async(req, res) => {
 };
 
 // UPDATE STATUS
-const { sendEnrollmentInstructions } = require('../utils/emailService');
 
 exports.updateStatus = async(req, res) => {
     try {
@@ -157,4 +159,70 @@ exports.updateStatus = async(req, res) => {
         console.error(err);
         res.status(500).send('Server Error');
     }
+};
+
+exports.getSystemSettings = async (req, res) => {
+  try {
+    // Try to find existing settings, or create default if none exist
+    let settings = await SystemSettings.findOne();
+    if (!settings) {
+      settings = await SystemSettings.create({});
+    }
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching settings", error: error.message });
+  }
+};
+
+// --- GET SETTINGS ---
+exports.getSystemSettings = async (req, res) => {
+  try {
+    // Try to find existing settings, or create default if none exist
+    let settings = await SystemSettings.findOne();
+    if (!settings) {
+      settings = await SystemSettings.create({});
+    }
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching settings", error: error.message });
+  }
+};
+
+// --- UPDATE SETTINGS ---
+exports.updateSystemSettings = async (req, res) => {
+  try {
+    const updates = req.body;
+    const settings = await SystemSettings.findOneAndUpdate({}, updates, { new: true, upsert: true });
+
+    await AuditLog.create({
+      user: req.user.username || "Admin",
+      action: "Updated System Configuration",
+      status: "Success",
+      details: JSON.stringify(updates)
+    });
+
+    res.json({ message: "Settings updated successfully", settings });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating settings", error: error.message });
+  }
+};
+
+// --- GET LOGS ---
+exports.getActivityLogs = async (req, res) => {
+  try {
+    const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(50);
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching logs" });
+  }
+};
+
+// --- CLEAR LOGS ---
+exports.clearActivityLogs = async (req, res) => {
+  try {
+    await AuditLog.deleteMany({});
+    res.json({ message: "Logs cleared successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error clearing logs" });
+  }
 };
