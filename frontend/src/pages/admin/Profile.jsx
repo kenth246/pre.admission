@@ -53,7 +53,26 @@ export default function Profile() {
     setIsEditing(false);
   };
 
-  // Helper to close modal and reset internal states
+  // --- CHANGE PASSWORD LOGIC ---
+  const handleSubmitPasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwords.new !== passwords.confirm) {
+      return alert("New passwords do not match!");
+    }
+
+    try {
+      await api.put('/admin/change-password', {
+        currentPassword: passwords.current,
+        newPassword: passwords.new
+      });
+      alert("Password changed successfully!");
+      closePasswordModal();
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (err) {
+      alert(err.response?.data?.msg || "Failed to change password.");
+    }
+  };
+
   const closePasswordModal = () => {
     setIsChangingPassword(false);
     setIsForgotPasswordMode(false); // Reset to default view
@@ -137,8 +156,8 @@ export default function Profile() {
                 <InfoItem 
                   icon={<Briefcase size={24} className="text-gray-500" />} 
                   label="Position"
-                  value={profile.position}
-                  isEditing={isEditing}
+                  value={tempProfile.position}
+                  isEditing={false} // Position usually not editable by admin themselves
                   name="position"
                   onChange={handleInputChange}
                 />
@@ -205,7 +224,7 @@ export default function Profile() {
               // 1. STANDARD CHANGE PASSWORD FORM
               <>
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Change Password</h3>
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert('Password Updated!'); closePasswordModal(); }}>
+                <form className="space-y-4" onSubmit={handleSubmitPasswordChange}>
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <label className="block text-sm font-medium text-gray-700">Current Password</label>
@@ -219,15 +238,33 @@ export default function Profile() {
                         Forgot Password?
                       </button>
                     </div>
-                    <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" />
+                    <input 
+                      type="password" 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" 
+                      value={passwords.current}
+                      onChange={(e) => setPasswords({...passwords, current: e.target.value})}
+                      required
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                    <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" />
+                    <input 
+                      type="password" 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                      value={passwords.new}
+                      onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                      required
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                    <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none" />
+                    <input 
+                      type="password" 
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                      value={passwords.confirm}
+                      onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                      required
+                    />
                   </div>
                   
                   <div className="pt-2 flex justify-end gap-3">
