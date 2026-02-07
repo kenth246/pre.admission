@@ -1,5 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
+import { FaCog } from "react-icons/fa";
+
+// --- MOCK DATA FOR NOTIFICATIONS ---
+const MOCK_NOTIFICATIONS = [
+  { id: 1, title: "New Application", message: "Juan Dela Cruz submitted a form.", time: "2m ago", isUnread: true },
+  { id: 2, title: "Interview Scheduled", message: "Maria Santos is ready for interview.", time: "1h ago", isUnread: true },
+  { id: 3, title: "System Maintenance", message: "Scheduled maintenance at 12:00 AM.", time: "5h ago", isUnread: false },
+  { id: 4, title: "BCET Results", message: "Exam results published.", time: "1d ago", isUnread: false },
+];
 
 export default function Header({ username = "admin" }) {
   const navigate = useNavigate();
@@ -16,10 +25,12 @@ export default function Header({ username = "admin" }) {
   const notifRef = useRef(null); 
 
   const handleLogoutClick = () => setShowLogoutModal(true);
+  
   const confirmLogout = () => {
     setShowLogoutModal(false);
-    navigate("/admin");
+    navigate("/admin"); // Redirects to Admin Login
   };
+  
   const cancelLogout = () => setShowLogoutModal(false);
 
   // Helper to mark ALL as read
@@ -27,7 +38,7 @@ export default function Header({ username = "admin" }) {
     setNotifications(prev => prev.map(n => ({ ...n, isUnread: false })));
   };
 
-  // --- NEW FUNCTION: Mark SINGLE item as read when clicked ---
+  // --- Mark SINGLE item as read when clicked ---
   const markAsRead = (id) => {
     setNotifications(prev => prev.map(n => 
       n.id === id ? { ...n, isUnread: false } : n
@@ -49,13 +60,15 @@ export default function Header({ username = "admin" }) {
 
   // Helper for Navigation Links
   const getNavClass = (path) => {
-    return location.pathname === path
+    // Basic check: if current path starts with the link path (for sub-routes)
+    const isActive = location.pathname === path || location.pathname.startsWith(path + "/");
+    return isActive
       ? "text-yellow-300 font-bold border-b-2 border-yellow-300 pb-1"
       : "text-white font-medium hover:text-yellow-200 transition-colors pb-1";
   };
 
   const getIconClass = (path, isActionActive = false) => {
-    const isActive = location.pathname === path || isActionActive;
+    const isActive = path ? location.pathname === path : isActionActive;
     return isActive
       ? "text-yellow-300 bg-green-700 shadow-inner scale-110" 
       : "text-white hover:text-yellow-200 hover:bg-green-500"; 
@@ -90,10 +103,10 @@ export default function Header({ username = "admin" }) {
             <nav>
               <ul className="flex items-center gap-6 text-base lg:text-lg">
                 <li><Link to="/dashboard" className={getNavClass('/dashboard')}>Dashboard</Link></li> 
-                <li><Link to="/admin/applications" className={getNavClass('/applications')}>Applications</Link></li>        
-                <li><Link to="/admin/assessment" className={getNavClass('/admin/assessment')}>Assessments</Link></li>   
-                <li><Link to="/admin_exam" className={getNavClass('/admin_exam')}>Admission</Link></li>     
-                <li><Link to="/admin_settings" className={getNavClass('/admin_settings')}>Settings</Link></li>
+                <li><Link to="/applications" className={getNavClass('/admin/applications')}>Applications</Link></li>        
+                <li><Link to="/assessment" className={getNavClass('/admin/assessment')}>Assessments</Link></li>   
+                <li><Link to="/admin_admission" className={getNavClass('/admin_admission')}>Admission</Link></li>     
+                <li><Link to="/settings" className={getNavClass('/admin_settings')}>Settings</Link></li>
               </ul>
             </nav>
 
@@ -116,7 +129,7 @@ export default function Header({ username = "admin" }) {
 
               {/* NOTIFICATION MODAL POPUP */}
               {isNotifOpen && (
-                <div className="absolute top-12 right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 text-gray-800 border border-gray-200 overflow-hidden animation-fade-in-down">
+                <div className="absolute top-12 right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 text-gray-800 border border-gray-200 overflow-hidden animate-fade-in-down">
                   {/* Header Section */}
                   <div className="p-4 border-b border-gray-100">
                     

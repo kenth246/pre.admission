@@ -1,12 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Header from "../../components/Header";
+import api from "../../services/api";
 import { Mail, Briefcase, User, X, Camera, ArrowLeft } from "lucide-react"; 
 
 export default function Profile() {
   // State for profile information
   const [profile, setProfile] = useState({
-    name: "IITIAdmin", 
-    email: "admin.iiti@gmail.com", 
+    name: "", 
+    email: "", 
     position: "Administrator",
     roleDisplay: "Admin",
   });
@@ -19,19 +20,41 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   
-  // NEW: State to toggle between "Update Password" and "Forgot Password" modes
-  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
+  // State for passwords
+  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
 
-  // Temporary state for editing inputs
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   const [tempProfile, setTempProfile] = useState(profile);
 
-  // Handle Input Changes
+  // --- FETCH DATA FROM BACKEND ---
+useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get('/admin/profile');
+        const data = res.data;
+        
+        setProfile(prev => ({ ...prev, ...data }));
+        setTempProfile(prev => ({ ...prev, ...data }));
+
+        // If backend returns an image, set it
+        if (data.image) {
+            const imgUrl = data.image.startsWith('http') 
+                ? data.image 
+                : `http://localhost:5000${data.image}`;
+            setProfileImage(imgUrl);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile");
+      }
+    };
+    fetchProfile();
+  }, []);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setTempProfile({ ...tempProfile, [name]: value });
   };
 
-  // Handle Image Upload
+  // Handle Image Upload (Preview Only for now)
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -40,11 +63,40 @@ export default function Profile() {
     }
   };
 
-  // Save Profile Changes
-  const handleSaveProfile = () => {
-    setProfile(tempProfile);
-    setIsEditing(false);
-    console.log("Saved profile:", tempProfile);
+  // --- SAVE PROFILE CHANGES ---
+const handleSaveProfile = async () => {
+    try {
+      // Use FormData to send text + file
+      const formData = new FormData();
+      formData.append('name', tempProfile.name);
+      formData.append('email', tempProfile.email);
+      
+      // Check if a new file exists in the hidden input
+      if (fileInputRef.current && fileInputRef.current.files[0]) {
+        formData.append('image', fileInputRef.current.files[0]);
+      }
+
+      const res = await api.put('/admin/profile', formData);
+      
+      // Update local state with response
+      const updated = res.data.profile;
+      setProfile(prev => ({ 
+          ...prev, 
+          name: updated.name, 
+          email: updated.email 
+      }));
+
+      // Update image preview if backend returned a new path
+      if (updated.image) {
+         setProfileImage(`http://localhost:5000${updated.image}`);
+      }
+
+      setIsEditing(false);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      alert("Failed to update profile.");
+      console.error(err);
+    }
   };
 
   // Cancel Editing
@@ -122,7 +174,7 @@ export default function Profile() {
             </div>
 
             <div className="text-white">
-              <h1 className="text-3xl font-bold">{profile.name}</h1>
+              <h1 className="text-3xl font-bold">{profile.name || "Admin"}</h1>
               <p className="text-green-100 text-lg opacity-90">{profile.position}</p>
             </div>
           </div>
@@ -138,7 +190,7 @@ export default function Profile() {
                 <InfoItem 
                   icon={<User size={24} className="text-gray-500" />} 
                   label="Username"
-                  value={profile.name}
+                  value={tempProfile.name}
                   isEditing={isEditing}
                   name="name"
                   onChange={handleInputChange}
@@ -147,7 +199,7 @@ export default function Profile() {
                 <InfoItem 
                   icon={<Mail size={24} className="text-gray-500" />}
                   label="Email Address"
-                  value={profile.email}
+                  value={tempProfile.email}
                   isEditing={isEditing}
                   name="email"
                   onChange={handleInputChange}

@@ -18,9 +18,10 @@ import TransfereeExam from "./pages/student/transferees/StudentExam.jsx";
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import Applications from "./pages/admin/Applications.jsx";
-import Assesment from "./pages/admin/Assesment.jsx";
+import Assessment from "./pages/admin/Assessment.jsx";
 import Admission from "./pages/admin/Admission.jsx";
 import Settings from "./pages/admin/Settings.jsx";
+import Profile from "./pages/admin/Profile.jsx";
 
 function App() {
   return (
@@ -51,12 +52,9 @@ function App() {
       <Route path="/applications" element={<Applications />} />  
       <Route path="/admin_admission" element={<Admission />} />
       <Route path="/settings" element={<Settings />} />
-      
-      {/* Assessment Routes */}
-      <Route path="/assessment" element={<Assesment />} />
-      <Route path="/assesment" element={<Assesment />} /> 
+      <Route path="/admin_profile" element={<Profile />} />
+      <Route path="/assessment" element={<Assessment />} />
 
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

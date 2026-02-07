@@ -1,18 +1,16 @@
 const Applicant = require('../models/applicant');
 const Admin = require('../models/admin');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const { logAudit } = require('../utils/auditLogger');
-// const { validateStatusTransition } = require('../utils/statusTransitions');
-const { sendAdmissionConfirmation } = require('../utils/emailService');
-const { sendEnrollmentInstructions } = require('../utils/emailService');
 const SystemSettings = require('../models/systemSettings');
 const AuditLog = require('../models/auditLog');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { sendEnrollmentInstructions } = require('../utils/emailService');
 
-// LOGIN 
+// --- 1. ADMIN AUTHENTICATION ---
 exports.login = async(req, res) => {
     try {
         const { email, password } = req.body;
+        // Check username or email
         const admin = await Admin.findOne({ username: email });
         if (!admin) return res.status(400).json({ msg: "Invalid Credentials" });
 
@@ -30,7 +28,7 @@ exports.login = async(req, res) => {
     }
 };
 
-// GET ALL APPLICANTS
+// --- 2. APPLICANT MANAGEMENT ---
 exports.getAllApplicants = async(req, res) => {
     try {
         console.log("Fetching applicants...");
@@ -38,33 +36,27 @@ exports.getAllApplicants = async(req, res) => {
         console.log(`Found ${applicants.length} applicants.`);
 
         const formatted = applicants.map(app => {
-            // 1. BASIC DATA EXTRACTION
             const edu = app.education || {};
             const addr = app.address || {};
             const fam = app.family || {};
             const other = app.otherInfo || app.otherInformation || {};
 
-            // 2. STATUS & TYPE
             const isTransferee = !!edu.collegeSchool;
             const dateStr = app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "N/A";
 
-            // 3. ADDRESS
             const city = addr.townCity || addr.cityName || "N/A";
             const brgy = addr.barangay || addr.barangayName || "";
             const prov = addr.province || addr.provinceName || "";
 
-            // 4. SPECIAL CATEGORIES
             let is4Ps = false,
                 isPWD = false,
                 isIndigenous = false;
 
             if (Array.isArray(other)) {
-                // Handle Old Array Format
                 is4Ps = other.includes("4Ps");
                 isPWD = other.includes("PWD") || other.includes("Disability");
                 isIndigenous = other.includes("Indigenous");
             } else if (typeof other === 'object') {
-                // Handle New Object Format
                 is4Ps = !!other.is4Ps;
                 isPWD = !!other.isPWD || !!other.hasDisability;
                 isIndigenous = !!other.isIndigenous;
@@ -78,8 +70,6 @@ exports.getAllApplicants = async(req, res) => {
                 date: dateStr,
                 status: app.status || "Pending Interview",
                 email: app.email,
-
-                // Full Profile Data
                 profile: {
                     personal: {
                         firstName: app.firstName,
@@ -133,8 +123,6 @@ exports.getAllApplicants = async(req, res) => {
     }
 };
 
-// UPDATE STATUS
-
 exports.updateStatus = async(req, res) => {
     try {
         const { status } = req.body;
@@ -142,17 +130,15 @@ exports.updateStatus = async(req, res) => {
 
         const applicant = await Applicant.findById(applicantId);
         if (!applicant) return res.status(404).json({ msg: "Applicant not found" });
+
         applicant.status = status;
         await applicant.save();
 
-        //  SEND EMAIL IF PASSED
-
+        // Send Email if passed
         if (status === 'Passed BCET' || status === 'Admitted') {
             console.log(`Sending admission email to ${applicant.email}...`);
             await sendEnrollmentInstructions(applicant.email, applicant._id);
         }
-
-        try {} catch (e) { console.warn("Audit Log Error:", e.message); }
 
         res.json({ msg: "Status updated and email sent" });
     } catch (err) {
@@ -161,68 +147,122 @@ exports.updateStatus = async(req, res) => {
     }
 };
 
-exports.getSystemSettings = async (req, res) => {
-  try {
-    // Try to find existing settings, or create default if none exist
-    let settings = await SystemSettings.findOne();
-    if (!settings) {
-      settings = await SystemSettings.create({});
+// --- 3. SYSTEM SETTINGS & LOGS ---
+exports.getSystemSettings = async(req, res) => {
+    try {
+        let settings = await SystemSettings.findOne();
+        if (!settings) {
+            settings = await SystemSettings.create({});
+        }
+        res.json(settings);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching settings", error: error.message });
     }
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching settings", error: error.message });
-  }
 };
 
-// --- GET SETTINGS ---
-exports.getSystemSettings = async (req, res) => {
-  try {
-    // Try to find existing settings, or create default if none exist
-    let settings = await SystemSettings.findOne();
-    if (!settings) {
-      settings = await SystemSettings.create({});
+exports.updateSystemSettings = async(req, res) => {
+    try {
+        const updates = req.body;
+        const settings = await SystemSettings.findOneAndUpdate({}, updates, { new: true, upsert: true });
+
+        const user = req.user ? (req.user.username || "Admin") : "System";
+
+        await AuditLog.create({
+            user: user,
+            action: "Updated System Configuration",
+            status: "Success",
+            details: JSON.stringify(updates)
+        });
+
+        res.json({ message: "Settings updated successfully", settings });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating settings", error: error.message });
     }
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching settings", error: error.message });
-  }
 };
 
-// --- UPDATE SETTINGS ---
-exports.updateSystemSettings = async (req, res) => {
-  try {
-    const updates = req.body;
-    const settings = await SystemSettings.findOneAndUpdate({}, updates, { new: true, upsert: true });
-
-    await AuditLog.create({
-      user: req.user.username || "Admin",
-      action: "Updated System Configuration",
-      status: "Success",
-      details: JSON.stringify(updates)
-    });
-
-    res.json({ message: "Settings updated successfully", settings });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating settings", error: error.message });
-  }
+exports.getActivityLogs = async(req, res) => {
+    try {
+        const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching logs" });
+    }
 };
 
-// --- GET LOGS ---
-exports.getActivityLogs = async (req, res) => {
-  try {
-    const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(50);
-    res.json(logs);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching logs" });
-  }
+exports.clearActivityLogs = async(req, res) => {
+    try {
+        await AuditLog.deleteMany({});
+        res.json({ message: "Logs cleared successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Error clearing logs" });
+    }
 };
 
-// --- CLEAR LOGS ---
-exports.clearActivityLogs = async (req, res) => {
-  try {
-    await AuditLog.deleteMany({});
-    res.json({ message: "Logs cleared successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error clearing logs" });
-  }
+// --- 4. ADMIN PROFILE MANAGEMENT ---
+exports.getProfile = async(req, res) => {
+    try {
+        const admin = await Admin.findById(req.user.id).select('-password');
+        if (!admin) return res.status(404).json({ msg: "Admin not found" });
+
+        res.json({
+            name: admin.username,
+            email: admin.email,
+            image: admin.image,
+            position: "Administrator",
+            roleDisplay: "Admin"
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.updateProfile = async(req, res) => {
+    try {
+        const { name, email } = req.body;
+        const admin = await Admin.findById(req.user.id);
+
+        if (!admin) return res.status(404).json({ msg: "Admin not found" });
+
+        if (name) admin.username = name;
+        if (email) admin.email = email;
+
+        // If an image was uploaded
+        if (req.file) {
+            admin.image = `/uploads/${req.file.filename}`;
+        }
+
+        await admin.save();
+
+        res.json({
+            msg: "Profile updated",
+            profile: {
+                name: admin.username,
+                email: admin.email,
+                image: admin.image
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.changePassword = async(req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const admin = await Admin.findById(req.user.id);
+
+        const isMatch = await bcrypt.compare(currentPassword, admin.password);
+        if (!isMatch) return res.status(400).json({ msg: "Incorrect current password" });
+
+        const salt = await bcrypt.genSalt(10);
+        admin.password = await bcrypt.hash(newPassword, salt);
+
+        await admin.save();
+        res.json({ msg: "Password updated successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
 };

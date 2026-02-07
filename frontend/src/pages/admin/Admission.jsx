@@ -477,6 +477,9 @@ export default function Admission() {
   };
 
   const filteredApplicants = applicants.filter((a) => {
+	if (a.status !== "Passed" && a.status !== "Admitted") {
+        return false; 
+    }
     const text = `${a.id} ${a.name} ${a.type} ${a.status}`.toLowerCase();
     if (searchQuery && !text.includes(searchQuery.toLowerCase())) return false;
     if (typeFilter && a.type !== typeFilter) return false;

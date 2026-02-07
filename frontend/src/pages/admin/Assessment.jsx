@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header from '../../components/Header.jsx';
 import { FaSearch, FaFilter, FaPlus, FaTrash, FaCog, FaFileUpload } from "react-icons/fa";
 import { FileText, MessageSquare, User, Calendar, Send, XCircle, CheckCircle } from "lucide-react";
-import api from "../../services/api";
+import api from "../../services/api.js";
 
-export default function Assesments() {
+export default function Assessments() {
   const navigate = useNavigate();
   const location = useLocation();
   
