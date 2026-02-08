@@ -41,38 +41,24 @@ export default function AdminDashboard() {
   const pieChartInstance = useRef(null);
   const barChartInstance = useRef(null);
 
-  // State initialized as empty array for Real Data
+  // State
   const [applicants, setApplicants] = useState([]);
 
-  // Fetch Data from Backend
+  // --- 1. FETCH DATA ---
   useEffect(() => {
     const fetchApplicants = async () => {
       try {
         const res = await api.get('/admin/applicants');
         
-        // Transform Backend Data to match the Dashboard's expected format
-        const formattedData = res.data.map(app => {
-            // Determine Status String based on backend object
-            let statusString = app.status?.admissionStatus || "Pending";
-            
-            if (app.status?.admissionStatus === 'Admitted') {
-                statusString = "Admitted";
-            } else if (app.status?.interviewStatus === 'Pending') {
-                statusString = "Pending Interview";
-            } else if (app.status?.examStatus === 'Pending') {
-                statusString = "Pending BCET";
-            }
-
-            return {
-                id: app.id,
-                name: app.name,
-                type: app.type,
-                location: app.location,
-                date: app.date,
-                status: statusString,
-                email: app.email
-            };
-        });
+        const formattedData = res.data.map(app => ({
+            id: app.id,
+            name: app.name,
+            type: app.type,
+            location: app.location || "N/A",
+            date: app.date,
+            status: app.status || "Pending Interview",
+            email: app.email
+        }));
 
         setApplicants(formattedData);
       } catch (error) {
@@ -82,87 +68,67 @@ export default function AdminDashboard() {
     fetchApplicants();
   }, []);
 
-  // KPI Calculations
+  // --- 2. KPI CALCULATIONS ---
   const totalApplicants = applicants.length;
   const pendingInterview = applicants.filter(a => a.status === "Pending Interview").length;
-  const pendingBcet = applicants.filter(a => a.status === "Pending BCET").length;
-  const admittedApplicants = applicants.filter(a => a.status === "Admitted").length;
+  const pendingBcet = applicants.filter(a => a.status === "Pending BCET" || a.status === "For Exam").length;
+  const admittedApplicants = applicants.filter(a => a.status === "Admitted" || a.status === "Enrolled").length;
 
+  // --- 3. CHARTS ---
   useEffect(() => {
-    // --- 1. APPLICANT TYPE PIE CHART ---
-    const freshmenCount = applicants.filter((a) => a.type === "Freshmen").length;
-    const transfereesCount = applicants.filter((a) => a.type === "Transferee" || a.type === "Transferees").length; // Handle both spellings
+    // A. PIE CHART
+    const freshmenCount = applicants.filter((a) => a.type === "Freshmen" || a.type === "Freshman").length;
+    const transfereesCount = applicants.filter((a) => a.type === "Transferee").length;
 
-    if (pieChartInstance.current) {
-      pieChartInstance.current.destroy();
-    }
+    if (pieChartInstance.current) pieChartInstance.current.destroy();
 
     if (pieChartRef.current) {
         pieChartInstance.current = new Chart(pieChartRef.current, {
         type: "pie",
         data: {
             labels: ["Freshmen", "Transferees"],
-            datasets: [
-            {
+            datasets: [{
                 data: [freshmenCount, transfereesCount],
-                backgroundColor: ["#15803d", "#facc15"], // Green & Yellow
+                backgroundColor: ["#15803d", "#facc15"], 
                 hoverOffset: 4,
-            },
-            ],
+            }],
         },
         options: {
             responsive: true,
-			maintainAspectRatio: false,
-            plugins: {
-            legend: { position: "bottom" },
-            },
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom" } },
         },
         });
     }
 
-    // --- 2. APPLICANT LOCATIONS BAR CHART ---
+    // B. BAR CHART
     const locationCounts = applicants.reduce((acc, curr) => {
-      // Ensure location exists
       const loc = curr.location || "Unknown";
       acc[loc] = (acc[loc] || 0) + 1;
       return acc;
     }, {});
-    const locationLabels = Object.keys(locationCounts);
-    const locationData = Object.values(locationCounts);
 
-    if (barChartInstance.current) {
-      barChartInstance.current.destroy();
-    }
+    if (barChartInstance.current) barChartInstance.current.destroy();
 
     if (barChartRef.current) {
         barChartInstance.current = new Chart(barChartRef.current, {
         type: "bar",
         data: {
-            labels: locationLabels,
-            datasets: [
-            {
-                label: "Number of Applicants",
-                data: locationData,
+            labels: Object.keys(locationCounts),
+            datasets: [{
+                label: "Applicants",
+                data: Object.values(locationCounts),
                 backgroundColor: "#009437", 
                 borderRadius: 5,
-            },
-            ],
+            }],
         },
         options: {
             responsive: true,
             scales: {
-            y: {
-                beginAtZero: true,
-                ticks: { stepSize: 1 },
-                grid: { display: false }
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } },
+                x: { grid: { display: false } }
             },
-            x: {
-                grid: { display: false }
-            }
-            },
-            plugins: {
-            legend: { display: false },
-            },
+            plugins: { legend: { display: false } },
         },
         });
     }
@@ -173,8 +139,25 @@ export default function AdminDashboard() {
     };
   }, [applicants]);
 
-  // Filter for Table: ONLY "Pending Interview"
- const recentApplicants = applicants.slice(0, 5);
+  // Filter for Table
+  const recentApplicants = applicants.slice(0, 5);
+
+  // --- HELPER FOR STATUS COLORS ---
+  const getStatusColor = (status) => {
+      const s = status?.toLowerCase() || "";
+      
+      if (s.includes("admitted") || s.includes("enrolled")) {
+          return "bg-green-100 text-green-700 border-green-200";
+      }
+      if (s.includes("pending bcet") || s.includes("for exam")) {
+          return "bg-orange-100 text-orange-700 border-orange-200";
+      }
+      if (s.includes("fail") || s.includes("rejected") || s.includes("denied")) {
+          return "bg-red-100 text-red-700 border-red-200";
+      }
+      // Default Yellow for Pending, Pending Interview, etc.
+      return "bg-yellow-100 text-yellow-700 border-yellow-200";
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans flex flex-col">
@@ -198,8 +181,6 @@ export default function AdminDashboard() {
 
         {/* --- CHARTS SECTION --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          
-          {/* Applicant Type (Pie) */}
           <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col items-center">
             <h3 className="text-lg font-bold text-gray-700 mb-4 w-full text-left border-b pb-2">Applicant Type</h3>
             <div className="w-64 h-64">
@@ -207,7 +188,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Applicant Locations (Bar) - Spans 2 Columns */}
           <div className="bg-white rounded-xl shadow-sm p-6 md:col-span-2">
             <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2 border-b pb-2">
               <FaMapMarkerAlt className="text-green-700"/> Applicant Locations
@@ -218,7 +198,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* --- PENDING INTERVIEW TABLE --- */}
+        {/* --- RECENT APPLICANTS TABLE --- */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -248,13 +228,14 @@ export default function AdminDashboard() {
                 {recentApplicants.length > 0 ? (
                   recentApplicants.map((app) => (
                     <tr key={app.id} className="hover:bg-gray-50 transition">
-                      <td className="p-4 font-mono text-gray-500">{app.id}</td>
+                      <td className="p-4 font-mono text-gray-500">{String(app.id).substring(0, 6)}...</td>
                       <td className="p-4 font-medium text-gray-900">{app.name}</td>
                       <td className="p-4 text-gray-600">{app.type}</td>
                       <td className="p-4 text-gray-600">{app.location}</td>
                       <td className="p-4 text-gray-600">{app.date}</td>
                       <td className="p-4">
-                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-yellow-100 text-yellow-700">
+                        {/* APPLYING THE NEW COLOR LOGIC HERE */}
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${getStatusColor(app.status)}`}>
                           {app.status}
                         </span>
                       </td>
@@ -263,14 +244,14 @@ export default function AdminDashboard() {
                           onClick={() => navigate('/applications', { state: { applicantId: app.id } })}
                           className="text-blue-600 hover:text-blue-800 font-bold text-xs uppercase border border-blue-200 bg-blue-50 px-3 py-1 rounded hover:bg-blue-100 transition"
                         >
-                          <span>View Details</span>
+                          View
                         </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                    <tr>
-                     <td colSpan="7" className="p-8 text-center text-gray-400 italic">No pending interviews found.</td>
+                     <td colSpan="7" className="p-8 text-center text-gray-400 italic">No applications found.</td>
                    </tr>
                 )}
               </tbody>
@@ -283,7 +264,6 @@ export default function AdminDashboard() {
   );
 }
 
-// Simple Helper Component for KPI Cards
 function KPICard({ title, count, icon, color }) {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-l-green-600 flex items-center justify-between hover:shadow-md transition">

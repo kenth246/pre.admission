@@ -18,8 +18,8 @@ export default function Header({ username = "admin" }) {
   
   // State for Notification Popup
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-
+  const [notifications, setNotifications] = useState([]); // Initialize empty
+  
   // State for Admin Profile Image
   const [profileImage, setProfileImage] = useState(null);
   
@@ -28,25 +28,40 @@ export default function Header({ username = "admin" }) {
 
   const notifRef = useRef(null); 
 
-  // --- FETCH ADMIN PROFILE IMAGE ON MOUNT ---
+  // --- FETCH DATA ON MOUNT ---
   useEffect(() => {
+    // 1. Fetch Admin Profile Image
     const fetchProfileImage = async () => {
       try {
         const res = await api.get('/admin/profile');
         if (res.data.image) {
-           // Ensure URL is complete
            const imgUrl = res.data.image.startsWith('http') 
              ? res.data.image 
              : `http://localhost:5000${res.data.image}`;
            setProfileImage(imgUrl);
         }
       } catch (error) {
-        console.error("Failed to fetch profile image for header", error);
-        // Fail silently and stick to default icon
+        console.error("Failed to fetch profile image", error);
       }
     };
+
+    // 2. Fetch Notifications
+    const fetchNotifications = async () => {
+      try {
+        const res = await api.get('/notifications');
+        setNotifications(res.data);
+      } catch (error) {
+        console.error("Failed to fetch notifications", error);
+      }
+    };
+
     fetchProfileImage();
-  }, []); // Run once on mount
+    fetchNotifications();
+
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogoutClick = () => setShowLogoutModal(true);
   
@@ -57,16 +72,30 @@ export default function Header({ username = "admin" }) {
   
   const cancelLogout = () => setShowLogoutModal(false);
 
-  // Helper to mark ALL as read
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isUnread: false })));
+  // --- MARK ALL AS READ ---
+  const markAllAsRead = async () => {
+    try {
+      // Optimistic UI update
+      setNotifications(prev => prev.map(n => ({ ...n, isUnread: false })));
+      // Backend update
+      await api.put('/notifications/read-all');
+    } catch (err) {
+      console.error("Failed to mark all as read", err);
+    }
   };
 
-  // --- Mark SINGLE item as read when clicked ---
-  const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => 
-      n.id === id ? { ...n, isUnread: false } : n
-    ));
+  // --- MARK SINGLE AS READ ---
+  const markAsRead = async (id) => {
+    try {
+      // Optimistic UI update
+      setNotifications(prev => prev.map(n => 
+        n.id === id ? { ...n, isUnread: false } : n
+      ));
+      // Backend update
+      await api.put(`/notifications/${id}/read`);
+    } catch (err) {
+      console.error("Failed to mark as read", err);
+    }
   };
 
   // Close notification popup if clicked outside

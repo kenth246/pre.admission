@@ -1,6 +1,7 @@
 const Applicant = require("../models/applicant");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { createNotification } = require('./notificationController');
 
 // APPLICANT TYPE
 exports.setApplicantType = async(req, res) => {
@@ -211,6 +212,18 @@ exports.uploadRequirements = async(req, res) => {
         applicant.documents.push(...docs);
         await applicant.save();
 
+        const { createNotification } = require('./notificationController'); // Ensure imported at top
+
+        try {
+            await createNotification(
+                "Documents Uploaded",
+                `${applicant.username || 'An applicant'} has uploaded ${req.files.length} new document(s).`,
+                "info"
+            );
+        } catch (error) {
+            console.error("Notification Error:", error);
+        }
+
         res.status(200).json({
             msg: "Requirements uploaded",
             documents: applicant.documents
@@ -245,6 +258,16 @@ exports.finalSubmit = async(req, res) => {
         applicant.isSubmitted = true;
         applicant.status = "Submitted";
         await applicant.save();
+
+        try {
+            await createNotification(
+                "New Application Submitted",
+                `${applicant.username || 'An applicant'} has submitted their application form.`,
+                "info"
+            );
+        } catch (error) {
+            console.error("Notification Error:", error);
+        }
 
         res.json({ msg: "Application successfully submitted" });
     } catch (err) {

@@ -5,6 +5,7 @@ const AuditLog = require('../models/auditLog');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { sendEnrollmentInstructions } = require('../utils/emailService');
+const { createNotification } = require('./notificationController');
 
 // --- 1. ADMIN AUTHENTICATION ---
 exports.login = async(req, res) => {
@@ -140,6 +141,16 @@ exports.updateStatus = async(req, res) => {
             await sendEnrollmentInstructions(applicant.email, applicant._id);
         }
 
+        try {
+            await createNotification(
+                "Applicant Status Updated",
+                `${applicant.firstName} ${applicant.lastName} has been marked as '${status}'.`,
+                "success"
+            );
+        } catch (error) {
+            console.error("Notification Error:", error);
+        }
+
         res.json({ msg: "Status updated and email sent" });
     } catch (err) {
         console.error(err);
@@ -173,6 +184,18 @@ exports.updateSystemSettings = async(req, res) => {
             status: "Success",
             details: JSON.stringify(updates)
         });
+
+        const { createNotification } = require('./notificationController'); // Ensure imported at top
+
+        try {
+            await createNotification(
+                "System Settings Updated",
+                `System configuration was updated by ${user}.`,
+                "warning" // 'warning' type makes it stand out
+            );
+        } catch (error) {
+            console.error("Notification Error:", error);
+        }
 
         res.json({ message: "Settings updated successfully", settings });
     } catch (error) {
