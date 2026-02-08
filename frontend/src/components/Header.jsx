@@ -3,13 +3,13 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { FaCog } from "react-icons/fa";
 import api from "../services/api"; // Import your API service
 
-// --- MOCK DATA FOR NOTIFICATIONS ---
+/*--- MOCK DATA FOR NOTIFICATIONS ---
 const MOCK_NOTIFICATIONS = [
   { id: 1, title: "New Application", message: "Juan Dela Cruz submitted a form.", time: "2m ago", isUnread: true },
   { id: 2, title: "Interview Scheduled", message: "Maria Santos is ready for interview.", time: "1h ago", isUnread: true },
   { id: 3, title: "System Maintenance", message: "Scheduled maintenance at 12:00 AM.", time: "5h ago", isUnread: false },
   { id: 4, title: "BCET Results", message: "Exam results published.", time: "1d ago", isUnread: false },
-];
+];*/
 
 export default function Header({ username = "admin" }) {
   const navigate = useNavigate();
@@ -27,6 +27,14 @@ export default function Header({ username = "admin" }) {
   const [activeTab, setActiveTab] = useState("all"); 
 
   const notifRef = useRef(null); 
+  
+  // --- SYSTEM INFO ---
+  const [systemInfo, setSystemInfo] = useState({
+    name: "BTECH - IITI", // Default fallback
+    subName: "Pre-Admission Management System",
+    logo1: "/img/btech.png",
+    logo2: "/img/iiti.png"
+  });
 
   // --- FETCH DATA ON MOUNT ---
   useEffect(() => {
@@ -133,6 +141,27 @@ export default function Header({ username = "admin" }) {
   const displayedNotifications = activeTab === 'all' 
     ? notifications 
     : notifications.filter(n => n.isUnread);
+
+// 2. ADD FETCH FOR SETTINGS
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await api.get('/admin/settings');
+        if (res.data) {
+           setSystemInfo({
+             name: res.data.systemName || "BTECH - IITI",
+             subName: res.data.schoolName || "Pre-Admission Management System",
+             // If you added logo uploads to settings, use them here too
+             logo1: "/img/btech.png", 
+             logo2: "/img/iiti.png"
+           });
+        }
+      } catch (err) {
+        console.error("Failed to load system settings");
+      }
+    };
+    fetchSettings();
+  }, []);
 
   return (
     <>

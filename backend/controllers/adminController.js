@@ -119,7 +119,7 @@ exports.getAllApplicants = async(req, res) => {
 
         res.json(formatted);
     } catch (err) {
-        console.error("Dashboard Error:", err);
+        console.error("ADMIN DASHBOARD ERROR:", err);
         res.status(500).send('Server Error');
     }
 };
@@ -176,30 +176,57 @@ exports.updateSystemSettings = async(req, res) => {
         const updates = req.body;
         const settings = await SystemSettings.findOneAndUpdate({}, updates, { new: true, upsert: true });
 
-        const user = req.user ? (req.user.username || "Admin") : "System";
-
-        await AuditLog.create({
-            user: user,
-            action: "Updated System Configuration",
-            status: "Success",
-            details: JSON.stringify(updates)
-        });
-
-        const { createNotification } = require('./notificationController'); // Ensure imported at top
-
         try {
+            const user = req.user ? (req.user.username || "Admin") : "System";
+
+            await AuditLog.create({
+                user: user,
+                action: "Updated System Configuration",
+                status: "Success",
+                details: JSON.stringify(updates)
+            });
+
+            const { createNotification } = require('./notificationController');
+
             await createNotification(
                 "System Settings Updated",
                 `System configuration was updated by ${user}.`,
-                "warning" // 'warning' type makes it stand out
+                "warning"
             );
-        } catch (error) {
-            console.error("Notification Error:", error);
+
+        } catch (logError) {
+            console.warn("Audit Log or Notification failed, but settings were saved:", logError.message);
         }
 
         res.json({ message: "Settings updated successfully", settings });
     } catch (error) {
         res.status(500).json({ message: "Error updating settings", error: error.message });
+    }
+};
+
+// Public Settings Route (No Auth)
+exports.getPublicSettings = async(req, res) => {
+    try {
+        const settings = await SystemSettings.findOne();
+
+        // Use same calculation logic for consistency if settings missing
+        let displayYear = "2025-2026";
+        if (settings ?.schoolYear) {
+            displayYear = settings.schoolYear;
+        } else {
+            const today = new Date();
+            const year = today.getFullYear();
+            displayYear = today.getMonth() >= 5 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+        }
+
+        res.json({
+            schoolName: settings ?.schoolName || "BTECH - IITI",
+            systemName: settings ?.systemName || "Pre-Admission System",
+            admissionStatus: settings ?.admissionStatus ?? true,
+            schoolYear: displayYear
+        });
+    } catch (error) {
+        res.status(500).json({ msg: "Error loading settings" });
     }
 };
 
@@ -225,7 +252,14 @@ exports.clearActivityLogs = async(req, res) => {
 exports.getProfile = async(req, res) => {
     try {
         const admin = await Admin.findById(req.user.id).select('-password');
-        if (!admin) return res.status(404).json({ msg: "Admin not found" });
+        if (!admin || !req.user) {
+            return res.json({
+                name: "System Admin (Default)",
+                email: "admin@school.edu",
+                image: null,
+                position: "Administrator"
+            });
+        }
 
         res.json({
             name: admin.username,

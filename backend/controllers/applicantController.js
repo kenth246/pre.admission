@@ -2,6 +2,7 @@ const Applicant = require("../models/applicant");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { createNotification } = require('./notificationController');
+const SystemSettings = require("../models/systemSettings");
 
 // APPLICANT TYPE
 exports.setApplicantType = async(req, res) => {
@@ -33,32 +34,60 @@ exports.setApplicantType = async(req, res) => {
 };
 
 // REGISTER
+// REGISTER
 exports.register = async(req, res) => {
     try {
+        // 1. GET SETTINGS & SECURITY CHECK
+        const settings = await SystemSettings.findOne();
+
+        // --- SMART SCHOOL YEAR CALCULATION ---
+        let currentSchoolYear = "2025-2026"; // Fallback default
+
+        if (settings && settings.schoolYear) {
+            // Option A: Use whatever the Admin set in Dashboard
+            currentSchoolYear = settings.schoolYear;
+        } else {
+            // Option B: Calculate automatically if settings are missing
+            const today = new Date();
+            const year = today.getFullYear();
+            // If month is June (5) or later, it's the start of a new school year
+            if (today.getMonth() >= 5) {
+                currentSchoolYear = `${year}-${year + 1}`;
+            } else {
+                currentSchoolYear = `${year - 1}-${year}`;
+            }
+        }
+        // -------------------------------------
+
+        if (settings) {
+            const isClosed = settings.admissionStatus === 'Closed' || settings.admissionStatus === false;
+            const isPastDeadline = settings.applicationDeadline && new Date() > new Date(settings.applicationDeadline);
+
+            if (isClosed) return res.status(403).json({ msg: "Admission is currently CLOSED." });
+            if (isPastDeadline) return res.status(403).json({ msg: "Application deadline has passed." });
+        }
+
+        // 2. CREATE ACCOUNT
         const { username, email, password } = req.body;
 
-        if (!username || !email || !password) {
-            return res.status(400).json({ msg: "Missing required fields" });
-        }
+        if (!username || !email || !password) return res.status(400).json({ msg: "Missing required fields" });
 
-        const existing = await Applicant.findOne({
-            $or: [{ username }, { email }]
-        });
-        if (existing) {
-            return res.status(400).json({ msg: "User already exists" });
-        }
+        const existing = await Applicant.findOne({ $or: [{ username }, { email }] });
+        if (existing) return res.status(400).json({ msg: "User already exists" });
 
         const hashed = await bcrypt.hash(password, 10);
 
         const applicant = await Applicant.create({
             username,
             email,
-            password: hashed
+            password: hashed,
+            schoolYear: currentSchoolYear // 👈 SAVING THE SCHOOL YEAR HERE
         });
 
         res.status(201).json({ msg: "Registered successfully" });
+
     } catch (err) {
-        console.error(err);
+        console.error("REGISTER ERROR:", err);
         res.status(500).json({ msg: "Server error" });
     }
 };
@@ -66,6 +95,17 @@ exports.register = async(req, res) => {
 // LOGIN
 exports.login = async(req, res) => {
     try {
+	// --- GATEKEEPER LOGIC (Commented Out) ---
+        /*
+        const settings = await SystemSettings.findOne();
+        if (settings) {
+            const isClosed = settings.admissionStatus === 'Closed' || settings.admissionStatus === false;
+            // Prevents login if portal is closed
+            if (isClosed) {
+                return res.status(403).json({ msg: "Admission Portal is CLOSED. Login disabled." });
+            }
+        }
+        */
         const { username, password } = req.body;
 
         // find applicant by username
@@ -234,8 +274,27 @@ exports.uploadRequirements = async(req, res) => {
     }
 };
 
+// FINAL SUBMIT
 exports.finalSubmit = async(req, res) => {
     try {
+        // --- 1. SECURITY CHECK (System Settings) ---
+        // Prevents submission if admission is closed or deadline passed
+        const settings = await SystemSettings.findOne();
+
+        if (settings) {
+            const isClosed = settings.admissionStatus === 'Closed' || settings.admissionStatus === false;
+            // Check if deadline exists and if current date is past it
+            const isPastDeadline = settings.applicationDeadline && new Date() > new Date(settings.applicationDeadline);
+
+            if (isClosed) {
+                return res.status(403).json({ msg: "Cannot submit: Admission is currently CLOSED." });
+            }
+            if (isPastDeadline) {
+                return res.status(403).json({ msg: "Cannot submit: Application deadline has passed." });
+            }
+        }
+        // --- END SECURITY CHECK ---
+
         const applicantId = req.user.id;
 
         const applicant = await Applicant.findById(applicantId);
@@ -255,10 +314,12 @@ exports.finalSubmit = async(req, res) => {
             });
         }
 
+        // Update Status
         applicant.isSubmitted = true;
         applicant.status = "Submitted";
         await applicant.save();
 
+        // Trigger Notification
         try {
             await createNotification(
                 "New Application Submitted",
@@ -270,8 +331,9 @@ exports.finalSubmit = async(req, res) => {
         }
 
         res.json({ msg: "Application successfully submitted" });
+
     } catch (err) {
-        console.error(err);
+        console.error("FINAL SUBMIT ERROR:", err);
         res.status(500).json({ msg: "Server error" });
     }
 };
