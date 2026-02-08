@@ -119,7 +119,7 @@ exports.getAllApplicants = async(req, res) => {
 
         res.json(formatted);
     } catch (err) {
-        console.error("ADMIN DASHBOARD ERROR:", err);
+        console.error("Dashboard Error:", err);
         res.status(500).send('Server Error');
     }
 };
